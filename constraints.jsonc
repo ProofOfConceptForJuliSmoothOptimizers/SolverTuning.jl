@@ -1,0 +1,11 @@
+// I will assume that the parameters to expose are already known.
+// The goal is to simply make an interface that works with NOMAD.jl
+// For now, only the parameters defined in the constructor of the solver will be considered.
+// Only the constraints will be defined in this file
+
+[
+    {
+    },
+    {
+    }
+]
