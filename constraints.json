@@ -1,0 +1,8 @@
+[
+    {
+        "id": 1,
+        "lhs": "bk_max",
+        "operation": ">",
+        "rhs": 0
+    }
+]
