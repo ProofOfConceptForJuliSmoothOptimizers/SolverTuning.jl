@@ -49,3 +49,9 @@ mutable struct AlgorithmicParameter{T, D <: AbstractDomain{T}} <: AbstractParame
     new{T,typeof(domain)}(default, domain, name)
   end
 end
+
+# TODO: Check that this method should only apply for the AlgorithmicParameter type
+function change_default!(parameter::AlgorithmicParameter{T, D}, new_value::T) where {T, D}
+  new_value ∈ parameter.domain || error("default value should be in domain")
+  parameter.default = new_value
+end
