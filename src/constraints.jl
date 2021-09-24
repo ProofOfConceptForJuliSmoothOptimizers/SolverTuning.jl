@@ -2,12 +2,12 @@ abstract type AbstractConstraint end
 
 mutable struct LinearConstraint <: AbstractConstraint
     id::UInt
-    lhs::Union{String, Real}
+    lhs::Union{String,Real}
     operation::String
-    rhs::Union{String, Real}
+    rhs::Union{String,Real}
 end
 
-function LinearConstraint(dict::Dict{String, Any})
+function LinearConstraint(dict::Dict{String,Any})
     id = dict["id"]
     lhs = dict["lhs"]
     operation = dict["operation"]

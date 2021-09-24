@@ -2,8 +2,8 @@ import Base.show
 using JSON
 
 include(joinpath(@__DIR__, "constants.jl"))
-include(joinpath(@__DIR__,"parameters.jl"))
-include(joinpath(@__DIR__,"constraints.jl"))
+include(joinpath(@__DIR__, "parameters.jl"))
+include(joinpath(@__DIR__, "constraints.jl"))
 include(joinpath(@__DIR__, "parameter_search.jl"))
 
 
@@ -16,7 +16,7 @@ for p ∈ params
     show(p)
 end
 
-dict = Dict{Any, Any}()
+dict = Dict{Any,Any}()
 open("constraints.json") do f
     global dict = JSON.parse(read(f, String))
 end
