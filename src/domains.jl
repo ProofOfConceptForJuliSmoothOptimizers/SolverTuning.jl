@@ -1,6 +1,10 @@
+import Base.in
 abstract type AbstractDomain{T} end
 eltype(::AbstractDomain{T}) where {T} = T
 
+"""
+Real Domain for continuous variables
+"""
 abstract type RealDomain{T<:Real} <: AbstractDomain{T} end
 mutable struct RealInterval{T<:Real} <: RealDomain{T}
     lower::T
@@ -25,10 +29,17 @@ upper(D::RealInterval) = D.upper
     (lower_open ? lower(D) < x : lower(D) ≤ x) && (upper_open ? x < upper(D) : x ≤ upper(D))
 in(x::T, D::RealInterval{T}) where {T<:Real} = x ∈ D
 
+
+"""
+Integer Domain for discrete variables.
+    1. Integer range
+    2. Integer Set
+"""
 abstract type IntegerDomain{T<:Integer} <: AbstractDomain{T} end
 mutable struct IntegerRange{T<:Integer} <: IntegerDomain{T}
     lower::T
     upper::T
+
     function IntegerRange(lower::T, upper::T) where {T<:Integer}
         lower ≤ upper ||
             error("lower bound ($lower) must be less than upper bound ($upper)")
@@ -41,29 +52,34 @@ upper(D::IntegerRange) = D.upper
 ∈(x::T, D::IntegerRange{T}) where {T<:Integer} = lower(D) ≤ x ≤ upper(D)
 in(x::T, D::IntegerRange{T}) where {T<:Integer} = x ∈ D
 
+
 mutable struct IntegerSet{T<:Integer} <: IntegerDomain{T}
-    s::Set{T}
+    set::Set{T}
+
+    function IntegerSet(values::Vector{T}) where {T<:Integer}
+        new{T}(Set{T}(values))
+    end
 end
 ∈(x::T, D::IntegerSet{T}) where {T<:Integer} = x ∈ D.s
 in(x::T, D::IntegerSet{T}) where {T<:Integer} = x ∈ D
 
-abstract type AbstractParameter{T} end
-mutable struct AlgorithmicParameter{T,D<:AbstractDomain{T}} <: AbstractParameter{T}
-    default::T
-    domain::D
-    name::String
-    function AlgorithmicParameter(
-        default::T,
-        domain::AbstractDomain{T},
-        name::String,
-    ) where {T}
-        default ∈ domain || error("default value should be in domain")
-        new{T,typeof(domain)}(default, domain, name)
+mutable struct BinarySet{T<:Integer} <: IntegerDomain{T}
+    set::Set{T}
+    function BinarySet(set::Set{T}) where {T<:Integer}
+        new{T}(set)
     end
+    BinarySet() = BinarySet(Set(0:1))
 end
 
-# TODO: Check that this method should only apply for the AlgorithmicParameter type
-function change_default!(parameter::AlgorithmicParameter{T,D}, new_value::T) where {T,D}
-    new_value ∈ parameter.domain || error("default value should be in domain")
-    parameter.default = new_value
+
+"""
+Categorical Domain for categorical variables.
+"""
+abstract type CategoricalDomain{T<:AbstractString} <: AbstractDomain{T} end
+mutable struct CategoricalSet{T<:AbstractString} <: CategoricalDomain{T}
+    set::Set{T}
+    function CategoricalSet(categories::Vector{T}) where {T<:AbstractString}
+        new{T}(Set{T}(categories))
+    end
+    CategoricalSet() = CategoricalSet(Vector{AbstractString}())
 end
