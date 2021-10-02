@@ -1,4 +1,5 @@
 import Base.in
+import Base.push!
 abstract type AbstractDomain{T} end
 eltype(::AbstractDomain{T}) where {T} = T
 
@@ -26,7 +27,8 @@ lower(D::RealInterval) = D.lower
 upper(D::RealInterval) = D.upper
 
 ∈(x::T, D::RealInterval{T}) where {T<:Real} =
-    (lower_open ? lower(D) < x : lower(D) ≤ x) && (upper_open ? x < upper(D) : x ≤ upper(D))
+    (D.lower_open ? lower(D) < x : lower(D) ≤ x) &&
+    (D.upper_open ? x < upper(D) : x ≤ upper(D))
 in(x::T, D::RealInterval{T}) where {T<:Real} = x ∈ D
 
 
@@ -60,8 +62,9 @@ mutable struct IntegerSet{T<:Integer} <: IntegerDomain{T}
         new{T}(Set{T}(values))
     end
 end
-∈(x::T, D::IntegerSet{T}) where {T<:Integer} = x ∈ D.s
+∈(x::T, D::IntegerSet{T}) where {T<:Integer} = in(x, D.set)
 in(x::T, D::IntegerSet{T}) where {T<:Integer} = x ∈ D
+Base.push!(D::IntegerSet{T}, x::T) where {T<:Integer} = push!(D.set, x)
 
 mutable struct BinarySet{T<:Integer} <: IntegerDomain{T}
     set::Set{T}
@@ -77,9 +80,13 @@ Categorical Domain for categorical variables.
 """
 abstract type CategoricalDomain{T<:AbstractString} <: AbstractDomain{T} end
 mutable struct CategoricalSet{T<:AbstractString} <: CategoricalDomain{T}
-    set::Set{T}
-    function CategoricalSet(categories::Vector{T}) where {T<:AbstractString}
-        new{T}(Set{T}(categories))
-    end
-    CategoricalSet() = CategoricalSet(Vector{AbstractString}())
+    categories::Set{T}
 end
+
+function CategoricalSet(categories::Vector{T}) where {T<:AbstractString}
+    return CategoricalSet(Set{T}(categories))
+end
+CategoricalSet() = CategoricalSet(Vector{AbstractString}())
+∈(x::T, D::CategoricalSet{T}) where {T<:AbstractString} = in(x, D.categories)
+in(x::T, D::CategoricalSet{T}) where {T<:AbstractString} = x ∈ D
+push!(D::CategoricalSet{T}, x::T) where {T<:AbstractString} = push!(D.categories, x)

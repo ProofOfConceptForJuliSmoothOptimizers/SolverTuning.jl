@@ -1,26 +1,7 @@
-import Base.show
-using JSON
+include("domains.jl")
+include("parameters.jl")
 
-include(joinpath(@__DIR__, "constants.jl"))
-include(joinpath(@__DIR__, "parameters.jl"))
-include(joinpath(@__DIR__, "constraints.jl"))
-include(joinpath(@__DIR__, "parameter_search.jl"))
+mem = AlgorithmicParameter(5, IntegerSet([1, 2, 3, 4, 5]), "mem")
+tr_radius = AlgorithmicParameter(eps(Float64), RealInterval(0.0, 10.0), "tr_radius")
 
-
-params = Vector{Parameter}()
-for param_dict ∈ get_parameters("trunk.jl")
-    push!(params, Parameter(param_dict))
-end
-
-for p ∈ params
-    show(p)
-end
-
-dict = Dict{Any,Any}()
-open("constraints.json") do f
-    global dict = JSON.parse(read(f, String))
-end
-
-for constraint in dict
-    show(LinearConstraint(constraint))
-end
+dci_params = AlgorithmicParameters([mem, tr_radius])
