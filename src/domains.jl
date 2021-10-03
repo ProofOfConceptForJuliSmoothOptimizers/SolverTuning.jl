@@ -69,10 +69,13 @@ Base.push!(D::IntegerSet{T}, x::T) where {T<:Integer} = push!(D.set, x)
 mutable struct BinarySet{T<:Integer} <: IntegerDomain{T}
     set::Set{T}
     function BinarySet(set::Set{T}) where {T<:Integer}
+        length(set) == 2 || error("Set must only contain value 0 and 1")
+        in(1, set) || error("set does not contain the value 1")
+        in(0, set) || error("set does not contain the value 0")
         new{T}(set)
     end
-    BinarySet() = BinarySet(Set(0:1))
 end
+BinarySet() = BinarySet(Set(0:1))
 
 
 """
