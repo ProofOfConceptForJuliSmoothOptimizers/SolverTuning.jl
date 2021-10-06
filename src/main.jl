@@ -12,3 +12,4 @@ vec = [mem, tr_radius]
 params = Dict(p.name => p for p in vec)
 
 other_param = AlgorithmicParameters([cts])
+other_param = AlgorithmicParameters(vec)

@@ -21,9 +21,9 @@ end
 
 abstract type AbstractParameters{P} end
 
-mutable struct AlgorithmicParameters{P} <: AbstractParameters{P}
+mutable struct AlgorithmicParameters{P<:AlgorithmicParameter} <: AbstractParameters{P}
     params::Dict{String,P}
-    function AlgorithmicParameters(vec::Vector{P}) where {P}
+    function AlgorithmicParameters(vec::Vector{P}) where {P<:AlgorithmicParameter}
         new{P}(Dict{String,P}(p.name => p for p in vec))
     end
 end
