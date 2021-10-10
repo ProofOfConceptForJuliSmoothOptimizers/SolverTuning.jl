@@ -27,34 +27,40 @@ lower(D::RealInterval) = D.lower
 upper(D::RealInterval) = D.upper
 
 ∈(x::T, D::RealInterval{T}) where {T<:Real} =
-    (D.lower_open ? lower(D) < x : lower(D) ≤ x) &&
-    (D.upper_open ? x < upper(D) : x ≤ upper(D))
+(D.lower_open ? lower(D) < x : lower(D) ≤ x) &&
+(D.upper_open ? x < upper(D) : x ≤ upper(D))
 in(x::T, D::RealInterval{T}) where {T<:Real} = x ∈ D
 
+lower_bound(D::RealInterval{T}) where {T<:Real} = lower(D)
+upper_bound(D::RealInterval{T}) where {T<:Real} = upper(D)
 
 """
 Integer Domain for discrete variables.
     1. Integer range
     2. Integer Set
-"""
-abstract type IntegerDomain{T<:Integer} <: AbstractDomain{T} end
-mutable struct IntegerRange{T<:Integer} <: IntegerDomain{T}
-    lower::T
-    upper::T
-
-    function IntegerRange(lower::T, upper::T) where {T<:Integer}
-        lower ≤ upper ||
+    """
+    abstract type IntegerDomain{T<:Integer} <: AbstractDomain{T} end
+    mutable struct IntegerRange{T<:Integer} <: IntegerDomain{T}
+        lower::T
+        upper::T
+        
+        function IntegerRange(lower::T, upper::T) where {T<:Integer}
+            lower ≤ upper ||
             error("lower bound ($lower) must be less than upper bound ($upper)")
-        new{T}(lower, upper)
+            new{T}(lower, upper)
+        end
     end
-end
-lower(D::IntegerRange) = D.lower
-upper(D::IntegerRange) = D.upper
+    lower(D::IntegerRange) = D.lower
+    upper(D::IntegerRange) = D.upper
+    
+    ∈(x::T, D::IntegerRange{T}) where {T<:Integer} = lower(D) ≤ x ≤ upper(D)
+    in(x::T, D::IntegerRange{T}) where {T<:Integer} = x ∈ D
 
-∈(x::T, D::IntegerRange{T}) where {T<:Integer} = lower(D) ≤ x ≤ upper(D)
-in(x::T, D::IntegerRange{T}) where {T<:Integer} = x ∈ D
-
-
+    lower_bound(D::IntegerRange{T}) where {T<:Integer} = lower(D)
+    upper_bound(D::IntegerRange{T}) where {T<:Integer} = upper(D)
+    # Binary set is just an integer range with 0 and 1.
+    BinaryRange(T::DataType = Int) = IntegerRange(zero(T), one(T))
+    
 mutable struct IntegerSet{T<:Integer} <: IntegerDomain{T}
     set::Set{T}
 
@@ -66,30 +72,23 @@ end
 in(x::T, D::IntegerSet{T}) where {T<:Integer} = x ∈ D
 Base.push!(D::IntegerSet{T}, x::T) where {T<:Integer} = push!(D.set, x)
 
-mutable struct BinarySet{T<:Integer} <: IntegerDomain{T}
-    set::Set{T}
-    function BinarySet(set::Set{T}) where {T<:Integer}
-        length(set) == 2 || error("Set must only contain value 0 and 1")
-        in(1, set) || error("set does not contain the value 1")
-        in(0, set) || error("set does not contain the value 0")
-        new{T}(set)
-    end
-end
-BinarySet() = BinarySet(Set(0:1))
-
-
+lower_bound(D::IntegerSet{T}) where {T<:Integer} = min(D.set...)
+upper_bound(D::IntegerSet{T}) where {T<:Integer} = max(D.set...)
 """
 Categorical Domain for categorical variables.
 """
+# Change this to a vector. use indices...
 abstract type CategoricalDomain{T<:AbstractString} <: AbstractDomain{T} end
 mutable struct CategoricalSet{T<:AbstractString} <: CategoricalDomain{T}
-    categories::Set{T}
+    categories::Vector{T}
 end
 
 function CategoricalSet(categories::Vector{T}) where {T<:AbstractString}
     return CategoricalSet(Set{T}(categories))
 end
 CategoricalSet() = CategoricalSet(Vector{AbstractString}())
-∈(x::T, D::CategoricalSet{T}) where {T<:AbstractString} = in(x, D.categories)
+∈(x::T, D::CategoricalSet{T}) where {T<:AbstractString} = x in D.categories
 in(x::T, D::CategoricalSet{T}) where {T<:AbstractString} = x ∈ D
 push!(D::CategoricalSet{T}, x::T) where {T<:AbstractString} = push!(D.categories, x)
+lower_bound(D::CategoricalSet{T}) where {T<:AbstractString} = min(D.categories...)
+upper_bound(D::CategoricalSet{T}) where {T<:AbstractString} = max(D.categories...)
