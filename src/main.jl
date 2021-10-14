@@ -8,9 +8,6 @@ using Krylov, LinearOperators, NLPModels, NLPModelsModifiers, SolverCore, Solver
 
 using NOMAD
 
-mem = AlgorithmicParameter(5, IntegerRange(4, 10), "mem")
-lbfgs_params = [mem]
-
 """ lbfgs"""
 mutable struct LBFGSSolver{T,V,Op<:AbstractLinearOperator,P<:AbstractHyperParameter,M<:AbstractNLPModel}
     p::AbstractVector{P}
@@ -41,18 +38,15 @@ function LBFGSSolver(
     return LBFGSSolver{T,V,Op,P,M}(p, x, xt, gx, gt, d, H, h)
 end
 
-@doc (@doc LBFGSSolver) function lbfgs(
-    nlp::AbstractNLPModel;
-    x::V = nlp.meta.x0,
-    kwargs...,
-) where {V}
-    mem = AlgorithmicParameter(5, IntegerRange(1, length(x)), "mem")
-    # τ₁ = AlgorithmicParameter(T(0.99), RealInterval(T(1.0e-4), 2.0), "τ₁")
-    # lbfgs_params = [mem, τ₁]
-    lbfgs_params = [mem]
-    solver = LBFGSSolver(nlp, lbfgs_params)
-    return solve!(solver, nlp; x = x, kwargs...)
-end
+# @doc (@doc LBFGSSolver) function lbfgs(
+#     solver::LBFGSSolver{T,V},
+#     nlp::AbstractNLPModel;
+#     x::V = nlp.meta.x0,
+#     kwargs...,
+# ) where {T,V}
+#     solver = LBFGSSolver(nlp, lbfgs_params)
+#     return solve!(solver, nlp; x = x, kwargs...)
+# end
 
 @doc (@doc LBFGSSolver) function lbfgs(
     nlp::AbstractNLPModel, parameters::AbstractVector{P};
@@ -124,9 +118,9 @@ function solve!(
         end
 
         # Perform improved Armijo linesearch.
-        # τ₁_slope_factor = default(find(solver.p, "τ₁"))
+        τ₁_slope_factor = default(find(solver.p, "τ₁"))
         t, good_grad, ft, nbk, nbW =
-            armijo_wolfe(h, f, slope, ∇ft, τ₁ = T(0.99), bk_max = 25, verbose = false)
+            armijo_wolfe(h, f, slope, ∇ft, τ₁ = τ₁_slope_factor, bk_max = 25, verbose = false)
 
         @info log_row(Any[iter, f, ∇fNorm, slope, nbk])
 
@@ -188,7 +182,9 @@ end
 
 function main()
     nlp = ADNLPModel(x -> (x[1] - 1)^2 + 4 * (x[2] - 1)^2, zeros(2), name = "(x₁ - 1)² + 4(x₂ - 1)²")
-    println(typeof(nlp))
+    mem = AlgorithmicParameter(1, IntegerRange(1, length(nlp.meta.x0)), "mem")
+    τ₁ = AlgorithmicParameter(Float64(0.99), RealInterval(Float64(1.0e-4), 2.0), "τ₁")
+    lbfgs_params = [mem, τ₁]
     solver = LBFGSSolver(nlp, lbfgs_params)
     param_optimization_problem = ParameterOptimizationProblem(solver)
     result = minimize_with_nomad!(param_optimization_problem)
