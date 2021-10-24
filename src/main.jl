@@ -10,7 +10,7 @@ using NOMAD
 
 """ lbfgs"""
 mutable struct LBFGSSolver{T,V,Op<:AbstractLinearOperator,P<:AbstractHyperParameter,M<:AbstractNLPModel}
-    p::AbstractVector{P}
+    p::Vector{P}
     x::V
     xt::V
     gx::V
@@ -30,23 +30,12 @@ function LBFGSSolver(
     xt = V(undef, nvar)
     gx = V(undef, nvar)
     gt = V(undef, nvar)
-    p  = parameters
-    memory = find(p, "mem")
+    memory = find(parameters, "mem")
     H = InverseLBFGSOperator(T, nvar, mem = default(memory), scaling = true)
     h = LineModel(nlp, x, d)
     Op = typeof(H)
-    return LBFGSSolver{T,V,Op,P,M}(p, x, xt, gx, gt, d, H, h)
+    return LBFGSSolver{T,V,Op,P,M}(parameters, x, xt, gx, gt, d, H, h)
 end
-
-# @doc (@doc LBFGSSolver) function lbfgs(
-#     solver::LBFGSSolver{T,V},
-#     nlp::AbstractNLPModel;
-#     x::V = nlp.meta.x0,
-#     kwargs...,
-# ) where {T,V}
-#     solver = LBFGSSolver(nlp, lbfgs_params)
-#     return solve!(solver, nlp; x = x, kwargs...)
-# end
 
 @doc (@doc LBFGSSolver) function lbfgs(
     nlp::AbstractNLPModel, parameters::AbstractVector{P};
@@ -183,7 +172,7 @@ end
 function main()
     nlp = ADNLPModel(x -> (x[1] - 1)^2 + 4 * (x[2] - 1)^2, zeros(2), name = "(x₁ - 1)² + 4(x₂ - 1)²")
     mem = AlgorithmicParameter(1, IntegerRange(1, length(nlp.meta.x0)), "mem")
-    τ₁ = AlgorithmicParameter(Float64(0.99), RealInterval(Float64(1.0e-4), 2.0), "τ₁")
+    τ₁ = AlgorithmicParameter(Float64(0.99), RealInterval(Float64(1.0e-4), 1.0), "τ₁")
     lbfgs_params = [mem, τ₁]
     solver = LBFGSSolver(nlp, lbfgs_params)
     param_optimization_problem = ParameterOptimizationProblem(solver)

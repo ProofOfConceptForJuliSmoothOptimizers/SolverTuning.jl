@@ -1,7 +1,10 @@
 import Base.in
-import Base.push!
 abstract type AbstractDomain{T} end
 eltype(::AbstractDomain{T}) where {T} = T
+∈(::T, ::AbstractDomain{T}) where {T} = false
+in(x::T, D::AbstractDomain{T}) where {T} = x ∈ D
+lower(::AbstractDomain{T}) where {T<:AbstractString} = error("Lower bound is undefined for this domain.")
+upper(::AbstractDomain{T}) where {T<:AbstractString} = error("Upper bound is undefined for this domain.")
 
 """
 Real Domain for continuous variables
@@ -26,41 +29,34 @@ end
 lower(D::RealInterval) = D.lower
 upper(D::RealInterval) = D.upper
 
-∈(x::T, D::RealInterval{T}) where {T<:Real} =
-(D.lower_open ? lower(D) < x : lower(D) ≤ x) &&
-(D.upper_open ? x < upper(D) : x ≤ upper(D))
+∈(x::T, D::RealInterval{T}) where {T<:Real} = begin
+    (D.lower_open ? lower(D) < x : lower(D) ≤ x) && (D.upper_open ? x < upper(D) : x ≤ upper(D))
+end
 in(x::T, D::RealInterval{T}) where {T<:Real} = x ∈ D
-
-lower_bound(D::RealInterval{T}) where {T<:Real} = lower(D)
-upper_bound(D::RealInterval{T}) where {T<:Real} = upper(D)
 
 """
 Integer Domain for discrete variables.
     1. Integer range
     2. Integer Set
     """
-    abstract type IntegerDomain{T<:Integer} <: AbstractDomain{T} end
-    mutable struct IntegerRange{T<:Integer} <: IntegerDomain{T}
-        lower::T
-        upper::T
-        
-        function IntegerRange(lower::T, upper::T) where {T<:Integer}
-            lower ≤ upper ||
-            error("lower bound ($lower) must be less than upper bound ($upper)")
-            new{T}(lower, upper)
-        end
-    end
-    lower(D::IntegerRange) = D.lower
-    upper(D::IntegerRange) = D.upper
-    
-    ∈(x::T, D::IntegerRange{T}) where {T<:Integer} = lower(D) ≤ x ≤ upper(D)
-    in(x::T, D::IntegerRange{T}) where {T<:Integer} = x ∈ D
+abstract type IntegerDomain{T<:Integer} <: AbstractDomain{T} end
+mutable struct IntegerRange{T<:Integer} <: IntegerDomain{T}
+    lower::T
+    upper::T
 
-    lower_bound(D::IntegerRange{T}) where {T<:Integer} = lower(D)
-    upper_bound(D::IntegerRange{T}) where {T<:Integer} = upper(D)
-    # Binary set is just an integer range with 0 and 1.
-    BinaryRange(T::DataType = Int) = IntegerRange(zero(T), one(T))
-    
+    function IntegerRange(lower::T, upper::T) where {T<:Integer}
+        lower ≤ upper ||
+            error("lower bound ($lower) must be less than upper bound ($upper)")
+        new{T}(lower, upper)
+    end
+end
+lower(D::IntegerRange) = D.lower
+upper(D::IntegerRange) = D.upper
+
+∈(x::T, D::IntegerRange{T}) where {T<:Integer} = lower(D) ≤ x ≤ upper(D)
+# Binary set is just an integer range with 0 and 1.
+BinaryRange(S::Type{T}) where {T <: Integer} = IntegerRange(zero(S), one(S))
+
 mutable struct IntegerSet{T<:Integer} <: IntegerDomain{T}
     set::Set{T}
 
@@ -69,11 +65,10 @@ mutable struct IntegerSet{T<:Integer} <: IntegerDomain{T}
     end
 end
 ∈(x::T, D::IntegerSet{T}) where {T<:Integer} = in(x, D.set)
-in(x::T, D::IntegerSet{T}) where {T<:Integer} = x ∈ D
-Base.push!(D::IntegerSet{T}, x::T) where {T<:Integer} = push!(D.set, x)
 
-lower_bound(D::IntegerSet{T}) where {T<:Integer} = min(D.set...)
-upper_bound(D::IntegerSet{T}) where {T<:Integer} = max(D.set...)
+lower(D::IntegerSet{T}) where {T<:Integer} = min(D.set...)
+upper(D::IntegerSet{T}) where {T<:Integer} = max(D.set...)
+
 """
 Categorical Domain for categorical variables.
 """
@@ -84,11 +79,7 @@ mutable struct CategoricalSet{T<:AbstractString} <: CategoricalDomain{T}
 end
 
 function CategoricalSet(categories::Vector{T}) where {T<:AbstractString}
-    return CategoricalSet(Set{T}(categories))
+    return CategoricalSet(categories)
 end
 CategoricalSet() = CategoricalSet(Vector{AbstractString}())
 ∈(x::T, D::CategoricalSet{T}) where {T<:AbstractString} = x in D.categories
-in(x::T, D::CategoricalSet{T}) where {T<:AbstractString} = x ∈ D
-push!(D::CategoricalSet{T}, x::T) where {T<:AbstractString} = push!(D.categories, x)
-lower_bound(D::CategoricalSet{T}) where {T<:AbstractString} = min(D.categories...)
-upper_bound(D::CategoricalSet{T}) where {T<:AbstractString} = max(D.categories...)
