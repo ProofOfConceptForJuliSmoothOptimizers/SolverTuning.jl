@@ -96,8 +96,9 @@ function solve!(
     tired = neval_obj(nlp) > max_eval ≥ 0 || elapsed_time > max_time
     stalled = false
     status = :unknown
+    # Algorithmic Paramters:
+    max_bk = default(find(solver.parameters, "bk_max"))
     τ₁_slope_factor = default(find(solver.parameters, "τ₁"))
-
     while !(optimal || tired || stalled)
         mul!(d, H, ∇f, -one(T), zero(T))
         slope = dot(n, d, ∇f)
@@ -110,7 +111,7 @@ function solve!(
 
         # Perform improved Armijo linesearch.
         t, good_grad, ft, nbk, nbW =
-            armijo_wolfe(h, f, slope, ∇ft, τ₁ = τ₁_slope_factor, bk_max = 25, verbose = false)
+            armijo_wolfe(h, f, slope, ∇ft, τ₁ = τ₁_slope_factor, bk_max = max_bk, verbose = false)
 
         @info log_row(Any[iter, f, ∇fNorm, slope, nbk])
 
@@ -162,7 +163,8 @@ function main()
     mem = AlgorithmicParameter(1, IntegerRange(1, length(nlp.meta.x0)), "mem")
     τ₁ = AlgorithmicParameter(Float64(0.99), RealInterval(Float64(1.0e-4), 1.0), "τ₁")
     scaling = AlgorithmicParameter(true, BinaryRange(), "scaling")
-    lbfgs_params = [mem, τ₁, scaling]
+    bk_max = AlgorithmicParameter(25, IntegerRange(10, 30), "bk_max")
+    lbfgs_params = [mem, τ₁, scaling, bk_max]
     solver = LBFGSSolver(nlp, lbfgs_params)
     param_optimization_problem = ParameterOptimizationProblem(solver)
     result = minimize_with_nomad!(param_optimization_problem)
