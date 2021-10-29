@@ -31,7 +31,12 @@ function check_default(domain::AbstractDomain{T}, new_value::T) where T
 end
 
 function set_default!(parameter::AlgorithmicParameter{T}, new_value::Float64) where T
-    new_value = !(nomad_type(eltype(domain(parameter))) == "R") ? convert(Int64, new_value) : new_value
+    if nomad_type(eltype(domain(parameter))) == "I"
+        new_value = round(Int64, new_value)
+    end
+    if nomad_type(eltype(domain(parameter))) == "B"
+        new_value = convert(Bool, new_value)
+    end
     check_default(parameter.domain, new_value)
     parameter.default = new_value
 end
@@ -81,13 +86,11 @@ end
 
 # display degree: find where initialize
 function ParameterOptimizationProblem(solver::Any)
-    # TODO
-    parameters = solver.p
+    parameters = solver.parameters
     function obj(v::AbstractVector{Float64}; solver = solver)
         println("Updating params!")
         # TODO
-        parameters = solver.p
-        [set_default!(param, param_value) for (param, param_value) in zip(parameters, v)]
+        [set_default!(param, param_value) for (param, param_value) in zip(solver.parameters, v)]
         return true, true, bb_output(parameters)
     end
     nomad = NomadProblem(length(parameters), 1, ["OBJ"], obj;
@@ -102,5 +105,5 @@ end
 # Nomad:
 function minimize_with_nomad!(problem::ParameterOptimizationProblem)
     println("Entering NOMAD!")
-    solve(problem.nomad, current_param_values(problem.solver.p))
+    solve(problem.nomad, current_param_values(problem.solver.parameters))
 end

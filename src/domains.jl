@@ -54,8 +54,24 @@ lower(D::IntegerRange) = D.lower
 upper(D::IntegerRange) = D.upper
 
 ∈(x::T, D::IntegerRange{T}) where {T<:Integer} = lower(D) ≤ x ≤ upper(D)
-# Binary set is just an integer range with 0 and 1.
-BinaryRange(S::Type{T}) where {T <: Integer} = IntegerRange(zero(S), one(S))
+
+"""
+Binary range for boolean parameters.
+Note: This concrete type is not mutable as it would break the purpose of a binary range.
+e.g:
+b = BinaryRange()
+"""
+abstract type BinaryDomain{T<:Bool} <: AbstractDomain{T} end
+struct BinaryRange{T<:Bool} <: BinaryDomain{T}
+    lower::T
+    upper::T
+    BinaryRange(l::T, u::T) where {T<:Bool} = new{T}(l, u)
+end
+BinaryRange() = BinaryRange(false, true)
+lower(D::BinaryRange{Bool}) = D.lower
+upper(D::BinaryRange{Bool}) = D.upper
+∈(x::T, D::BinaryRange{T}) where {T<:Bool} = lower(D) ≤ x ≤ upper(D)
+
 
 mutable struct IntegerSet{T<:Integer} <: IntegerDomain{T}
     set::Set{T}
@@ -77,9 +93,6 @@ abstract type CategoricalDomain{T<:AbstractString} <: AbstractDomain{T} end
 mutable struct CategoricalSet{T<:AbstractString} <: CategoricalDomain{T}
     categories::Vector{T}
 end
-
-function CategoricalSet(categories::Vector{T}) where {T<:AbstractString}
-    return CategoricalSet(categories)
-end
 CategoricalSet() = CategoricalSet(Vector{AbstractString}())
 ∈(x::T, D::CategoricalSet{T}) where {T<:AbstractString} = x in D.categories
+
