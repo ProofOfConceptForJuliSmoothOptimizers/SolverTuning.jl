@@ -4,12 +4,26 @@ include("parameters.jl")
 using LinearAlgebra, Logging, Printf
 
 # JSO packages
-using Krylov, LinearOperators, NLPModels, NLPModelsModifiers, SolverCore, SolverTools, ADNLPModels, SolverTest
+using Krylov,
+    LinearOperators,
+    NLPModels,
+    NLPModelsModifiers,
+    SolverCore,
+    SolverTools,
+    ADNLPModels,
+    SolverTest,
+    CUTEst
 
 using NOMAD
 
 """ lbfgs"""
-mutable struct LBFGSSolver{T,V,Op<:AbstractLinearOperator,P<:AbstractHyperParameter,M<:AbstractNLPModel}
+mutable struct LBFGSSolver{
+    T,
+    V,
+    Op<:AbstractLinearOperator,
+    P<:AbstractHyperParameter,
+    M<:AbstractNLPModel,
+}
     parameters::Vector{P}
     x::V
     xt::V
@@ -39,10 +53,11 @@ function LBFGSSolver(
 end
 
 @doc (@doc LBFGSSolver) function lbfgs(
-    nlp::AbstractNLPModel, parameters::AbstractVector{P};
+    nlp::AbstractNLPModel,
+    parameters::AbstractVector{P};
     x::V = nlp.meta.x0,
     kwargs...,
-) where {V, P<:AbstractHyperParameter}
+) where {V,P<:AbstractHyperParameter}
     solver = LBFGSSolver(nlp, parameters)
     return solve!(solver, nlp; x = x, kwargs...)
 end
@@ -86,11 +101,12 @@ function solve!(
     ϵ = atol + rtol * ∇fNorm
     iter = 0
 
-    @info log_header(
-        [:iter, :f, :dual, :slope, :bk],
-        [Int, T, T, T, Int],
-        hdr_override = Dict(:f => "f(x)", :dual => "‖∇f‖", :slope => "∇fᵀd"),
-    )
+    # TODO: Unconmment later
+    # @info log_header(
+    #     [:iter, :f, :dual, :slope, :bk],
+    #     [Int, T, T, T, Int],
+    #     hdr_override = Dict(:f => "f(x)", :dual => "‖∇f‖", :slope => "∇fᵀd"),
+    # )
 
     optimal = ∇fNorm ≤ ϵ
     tired = neval_obj(nlp) > max_eval ≥ 0 || elapsed_time > max_time
@@ -110,8 +126,15 @@ function solve!(
         end
 
         # Perform improved Armijo linesearch.
-        t, good_grad, ft, nbk, nbW =
-            armijo_wolfe(h, f, slope, ∇ft, τ₁ = τ₁_slope_factor, bk_max = max_bk, verbose = false)
+        t, good_grad, ft, nbk, nbW = armijo_wolfe(
+            h,
+            f,
+            slope,
+            ∇ft,
+            τ₁ = τ₁_slope_factor,
+            bk_max = max_bk,
+            verbose = false,
+        )
 
         @info log_row(Any[iter, f, ∇fNorm, slope, nbk])
 
@@ -159,8 +182,12 @@ function solve!(
 end
 
 function main()
-    nlp = ADNLPModel(x -> (x[1] - 1)^2 + 4 * (x[2] - 1)^2, zeros(2), name = "(x₁ - 1)² + 4(x₂ - 1)²")
-    mem = AlgorithmicParameter(1, IntegerRange(1, length(nlp.meta.x0)), "mem")
+    nlp = ADNLPModel(
+        x -> (x[1] - 1)^2 + 4 * (x[2] - 1)^2,
+        zeros(2),
+        name = "(x₁ - 1)² + 4(x₂ - 1)²",
+    )
+    mem = AlgorithmicParameter(2, IntegerRange(1, length(nlp.meta.x0)), "mem")
     τ₁ = AlgorithmicParameter(Float64(0.99), RealInterval(Float64(1.0e-4), 1.0), "τ₁")
     scaling = AlgorithmicParameter(true, BinaryRange(), "scaling")
     bk_max = AlgorithmicParameter(25, IntegerRange(10, 30), "bk_max")
