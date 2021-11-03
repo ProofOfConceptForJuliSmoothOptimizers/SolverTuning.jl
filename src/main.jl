@@ -136,7 +136,7 @@ function solve!(
             verbose = false,
         )
 
-        @info log_row(Any[iter, f, ∇fNorm, slope, nbk])
+        # @info log_row(Any[iter, f, ∇fNorm, slope, nbk])
 
         copyaxpy!(n, t, d, x, xt)
         good_grad || grad!(nlp, xt, ∇ft)
@@ -158,7 +158,7 @@ function solve!(
         elapsed_time = time() - start_time
         tired = neval_obj(nlp) > max_eval ≥ 0 || elapsed_time > max_time
     end
-    @info log_row(Any[iter, f, ∇fNorm])
+    # @info log_row(Any[iter, f, ∇fNorm])
 
     if optimal
         status = :first_order

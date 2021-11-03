@@ -35,7 +35,7 @@ function set_default!(parameter::AlgorithmicParameter{T}, new_value::Float64) wh
         new_value = round(Int64, new_value)
     end
     if nomad_type(eltype(domain(parameter))) == "B"
-        new_value = convert(Bool, new_value)
+        new_value = convert(Bool, round(Int64, new_value))
     end
     check_default(parameter.domain, new_value)
     parameter.default = new_value
@@ -84,9 +84,10 @@ end
 
 function bb_output(solver_params::AbstractVector{P}) where {P<:AbstractHyperParameter}
     # use Cutest problems. Use one problem at a time & call `finalize` function
-    cutest_problems = CUTEst.select(min_var=2, max_con=0, only_free_var=true)
+    cutest_problems = CUTEst.select(min_var=2, max_var=100, max_con=0, only_free_var=true)
+    # println("number of problems: $(length(cutest_problems))")
     max_time = 0.0
-    for problem in cutest_problems
+    for problem in cutest_problems[1:20]
         nlp = CUTEstModel(problem)
         time_per_problem = @elapsed lbfgs(nlp, solver_params)
         max_time += time_per_problem
