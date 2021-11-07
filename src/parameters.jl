@@ -1,5 +1,3 @@
-using NOMAD
-
 abstract type AbstractParameter{T} end
 abstract type AbstractSolverParameter{T} <: AbstractParameter{T} end
 abstract type AbstractHyperParameter{T} <: AbstractParameter{T} end
@@ -73,52 +71,4 @@ end
 # function that returns a vector of input types
 function input_types(parameters::AbstractVector{P}) where {P<:AbstractHyperParameter}
     return [nomad_type(eltype(domain(p))) for p ∈ parameters]
-end
-
-mutable struct ParameterOptimizationProblem{S,F1,F2}
-    nomad::NomadProblem
-    solver::S
-    bb_output::F1
-    obj::F2
-end
-
-function bb_output(solver_params::AbstractVector{P}) where {P<:AbstractHyperParameter}
-    # use Cutest problems. Use one problem at a time & call `finalize` function
-    cutest_problems = CUTEst.select(min_var=2, max_var=100, max_con=0, only_free_var=true)
-    # println("number of problems: $(length(cutest_problems))")
-    max_time = 0.0
-    for problem in cutest_problems[1:20]
-        nlp = CUTEstModel(problem)
-        time_per_problem = @elapsed lbfgs(nlp, solver_params)
-        max_time += time_per_problem
-        finalize(nlp)
-    end
-    return [max_time]
-end
-
-# display degree: find where initialize
-function ParameterOptimizationProblem(solver::Any)
-    parameters = solver.parameters
-    function obj(v::AbstractVector{Float64}; solver = solver)
-        [set_default!(param, param_value) for (param, param_value) in zip(solver.parameters, v)]
-        println("current_param_values: $(current_param_values(solver.parameters))")
-        return true, true, bb_output(parameters)
-    end
-    nomad = NomadProblem(
-        length(parameters),
-        1,
-        ["OBJ"],
-        obj;
-        input_types = input_types(parameters),
-        granularity = granularities(parameters),
-        lower_bound = lower_bounds(parameters),
-        upper_bound = upper_bounds(parameters),
-    )
-    return ParameterOptimizationProblem(nomad, solver, bb_output, obj)
-end
-
-# Nomad:
-function minimize_with_nomad!(problem::ParameterOptimizationProblem)
-    println("Entering NOMAD!")
-    solve(problem.nomad, current_param_values(problem.solver.parameters))
 end
