@@ -5,20 +5,19 @@ Nomad options can also be provided
 p = ParameterOptimizationProblem(solver; max_time=10, display_unsuccesful=true)
 See NOMAD.jl documentation for more options.
 """
-mutable struct ParameterOptimizationProblem{S,F1}
+mutable struct ParameterOptimizationProblem{S,F1, F2}
     nomad::NomadProblem
     solver::S
     black_box::F1
-    substitute_model::Union{Nothing,F1}
-    problems::AbstractVector{String}
+    substitute_model::Union{Nothing,F2}
 end
 
 # TODO: Add Parametric type to solver (e.g Abstract Solver)
 function ParameterOptimizationProblem(solver::S,
-                                    problems::AbstractVector{String},
                                     black_box::F1 = default_black_box,
-                                    substitute_model::Union{Nothing,F1} = nothing;
-                                    kwargs...) where {S<:LBFGSSolver, F1}
+                                    substitute_model::Union{Nothing,F2} = default_black_box_substitute,
+                                    use_substitute = false;
+                                    kwargs...) where {S<:LBFGSSolver, F1, F2}
     parameters = solver.parameters
     # define eval function here: 
     function eval_fct(v::AbstractVector{Float64}; algorithmic_params::AbstractVector{P} = parameters) where {P<:AbstractHyperParameter}
@@ -28,13 +27,19 @@ function ParameterOptimizationProblem(solver::S,
         count_eval = false
         black_box_output = [typemax(Float64)]
         try
-            black_box_output = black_box(algorithmic_params, problems)
+            args = [algorithmic_params]
+            if use_substitute
+                black_box_output = substitute_model(args...)
+            else
+                println("allo")
+                black_box_output = black_box(args...)
+            end
             success = true
             count_eval = true
         catch exception
             println("exception occured while solving:\t $exception")
         finally
-            return success, count_eval, black_box_output 
+            return success, count_eval, black_box_output
         end
     end
 
@@ -49,7 +54,7 @@ function ParameterOptimizationProblem(solver::S,
         upper_bound = upper_bounds(parameters),
     )
     set_nomad_options!(nomad.options; kwargs...)
-    return ParameterOptimizationProblem(nomad, solver, black_box, substitute_model, problems)
+    return ParameterOptimizationProblem(nomad, solver, black_box, substitute_model)
 end
 
 function set_nomad_options!(options::NomadOptions; kwargs...)
@@ -58,17 +63,29 @@ function set_nomad_options!(options::NomadOptions; kwargs...)
     end
 end
 
-function default_black_box(solver_params::AbstractVector{P}, problems::AbstractVector{String}) where {P<:AbstractHyperParameter}
+function default_black_box(solver_params::AbstractVector{P}) where {P<:AbstractHyperParameter}
     max_time = 0.0
+    problems = CUTEst.select(min_var=2, max_var=100, max_con=0, only_free_var=true)
     for problem in problems
         nlp = CUTEstModel(problem)
         time_per_problem = @elapsed lbfgs(nlp, solver_params)
-        max_time += time_per_problem
         finalize(nlp)
+        max_time += time_per_problem
     end
     return [max_time]
 end
 
+function default_black_box_substitute(solver_params::AbstractVector{P}; n_problems = 5) where {P<:AbstractHyperParameter}
+    max_time = 0.0
+    problems = CUTEst.select(min_var=2, max_var=10, max_con=0, only_free_var=true)
+    for i in 1:n_problems
+        nlp = CUTEstModel(problems[i])
+        time_per_problem = @elapsed lbfgs(nlp, solver_params)
+        finalize(nlp)
+        max_time += time_per_problem
+    end
+    return [max_time]
+end
 # Nomad:
 function solve_with_nomad!(problem::ParameterOptimizationProblem)
     println("Entering NOMAD!")
