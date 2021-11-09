@@ -14,9 +14,9 @@ end
 
 # TODO: Add Parametric type to solver (e.g Abstract Solver)
 function ParameterOptimizationProblem(solver::S,
-                                    black_box::F1 = default_black_box,
-                                    substitute_model::Union{Nothing,F2} = default_black_box_substitute,
-                                    use_substitute = false;
+                                    black_box::F1,
+                                    substitute_model::Union{Nothing,F2};
+                                    use_substitute = false,
                                     kwargs...) where {S<:LBFGSSolver, F1, F2}
     parameters = solver.parameters
     # define eval function here: 
@@ -77,8 +77,9 @@ end
 
 function default_black_box_substitute(solver_params::AbstractVector{P}; n_problems = 5) where {P<:AbstractHyperParameter}
     max_time = 0.0
-    problems = CUTEst.select(min_var=2, max_var=10, max_con=0, only_free_var=true)
-    for i in 1:n_problems
+    problems = CUTEst.select(min_var=1, max_var=100, max_con=0, only_free_var=true)
+
+    for i in rand(1:length(problems), n_problems)
         nlp = CUTEstModel(problems[i])
         time_per_problem = @elapsed lbfgs(nlp, solver_params)
         finalize(nlp)
