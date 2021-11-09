@@ -22,7 +22,6 @@ function ParameterOptimizationProblem(solver::S,
     # define eval function here: 
     function eval_fct(v::AbstractVector{Float64}; algorithmic_params::AbstractVector{P} = parameters) where {P<:AbstractHyperParameter}
         [set_default!(param, param_value) for (param, param_value) in zip(algorithmic_params, v)]
-        println("current_param_values: $(current_param_values(algorithmic_params))")
         success = false
         count_eval = false
         black_box_output = [typemax(Float64)]
@@ -75,20 +74,18 @@ function default_black_box(solver_params::AbstractVector{P}) where {P<:AbstractH
     return [max_time]
 end
 
-function default_black_box_substitute(solver_params::AbstractVector{P}; n_problems = 5) where {P<:AbstractHyperParameter}
+function default_black_box_surrogate(solver_params::AbstractVector{P}; n_problems = 5) where {P<:AbstractHyperParameter}
     max_time = 0.0
     problems = CUTEst.select(min_var=1, max_var=100, max_con=0, only_free_var=true)
-
     for i in rand(1:length(problems), n_problems)
         nlp = CUTEstModel(problems[i])
-        time_per_problem = @elapsed lbfgs(nlp, solver_params)
+        result = lbfgs(nlp, solver_params)
         finalize(nlp)
-        max_time += time_per_problem
+        max_time += result.elapsed_time
     end
     return [max_time]
 end
 # Nomad:
 function solve_with_nomad!(problem::ParameterOptimizationProblem)
-    println("Entering NOMAD!")
     solve(problem.nomad, current_param_values(problem.solver.parameters))
 end

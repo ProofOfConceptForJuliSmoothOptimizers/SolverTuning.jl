@@ -35,7 +35,7 @@ function main()
     # define paramter tuning problem:
     solver = LBFGSSolver(nlp, lbfgs_params)
     # define problem suite
-    param_optimization_problem = ParameterOptimizationProblem(solver, default_black_box, default_black_box_substitute; use_substitute=true, max_time=3600, display_unsuccessful=true)
+    param_optimization_problem = ParameterOptimizationProblem(solver, default_black_box, default_black_box_surrogate; use_substitute=true, max_time=3600, display_unsuccessful=true)
     result = solve_with_nomad!(param_optimization_problem)
     println(result)
 end
