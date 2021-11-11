@@ -73,11 +73,11 @@ function main()
         true,
     )
     # CUTEst selection parameters
-    bb_params = Dict(:min_var => 1, :max_var => 100, :max_con => 0, :only_free_var => true)
+    bb_kwargs = Dict(:min_var => 1, :max_var => 100, :max_con => 0, :only_free_var => true)
     # named arguments are options to pass to Nomad
     create_nomad_problem!(
         param_optimization_problem,
-        bb_params;
+        bb_kwargs;
         max_time = 300,
         display_unsuccessful = true,
     )

@@ -22,16 +22,16 @@ end
 
 function create_nomad_problem!(
     param_opt_problem::ParameterOptimizationProblem{S,F1,F2},
-    black_box_params::Dict{Symbol,T};
+    black_box_kwargs::Dict{Symbol,T};
     kwargs...,
 ) where {S<:LBFGSSolver,F1,F2,T}
     # eval function:
     function eval_function(
         v::AbstractVector{Float64};
         problem = param_opt_problem,
-        bb_params = black_box_params,
+        bb_kwargs = black_box_kwargs,
     )
-        eval_fct(v, problem, [problem.solver.parameters]; bb_params...)
+        eval_fct(v, problem, [problem.solver.parameters]; bb_kwargs...)
     end
 
     solver_params = param_opt_problem.solver.parameters
