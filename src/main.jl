@@ -1,5 +1,5 @@
 # stdlib
-using LinearAlgebra, Logging, Printf
+using LinearAlgebra, Logging, Printf, DataFrames
 
 # JSO packages
 using Krylov,
@@ -10,6 +10,7 @@ using Krylov,
     SolverTools,
     ADNLPModels,
     SolverTest,
+    SolverBenchmark,
     CUTEst
 
 using NOMAD
@@ -20,33 +21,46 @@ include("parameters.jl")
 include("lbfgs.jl")
 include("nomad_interface.jl")
 
+# important for stats creation 
+id = 1
+# Define SolverBenchmark data:
+benchmark_stats = Dict{Symbol, Any}(:lbfgs => DataFrame(id=Int64[], name=String[], status=Symbol[], f=Float64[], t=Float64[], iter=Int64[]))
+
 function default_black_box(
     solver_params::AbstractVector{P};
+    stats = benchmark_stats[:lbfgs],
     kwargs...,
 ) where {P<:AbstractHyperParameter}
     max_time = 0.0
     problems = CUTEst.select(; kwargs...)
     for problem in problems
+        global id
         nlp = CUTEstModel(problem)
-        time_per_problem = @elapsed lbfgs(nlp, solver_params)
+        result = lbfgs(nlp, solver_params)
         finalize(nlp)
-        max_time += time_per_problem
+        push!(stats, [id, problem, result.status, result.objective, result.elapsed_time, result.iter])
+        max_time += result.elapsed_time
+        id += 1
     end
     return [max_time]
 end
 
 function default_black_box_surrogate(
     solver_params::AbstractVector{P};
+    stats = benchmark_stats[:lbfgs],
     kwargs...,
 ) where {P<:AbstractHyperParameter}
     max_time = 0.0
     n_problems = 10
     problems = CUTEst.select(; kwargs...)
     for i in rand(1:length(problems), n_problems)
+        global id
         nlp = CUTEstModel(problems[i])
         result = lbfgs(nlp, solver_params)
         finalize(nlp)
+        push!(stats, [id, problems[i], result.status, result.objective, result.elapsed_time, result.iter])
         max_time += result.elapsed_time
+        id += 1
     end
     return [max_time]
 end
@@ -70,7 +84,7 @@ function main()
         solver,
         default_black_box,
         default_black_box_surrogate,
-        true,
+        false,
     )
     # CUTEst selection parameters
     bb_kwargs = Dict(:min_var => 1, :max_var => 100, :max_con => 0, :only_free_var => true)
@@ -81,8 +95,10 @@ function main()
         max_time = 300,
         display_unsuccessful = true,
     )
+    # Execute Nomad
     result = solve_with_nomad!(param_optimization_problem)
     println(result)
+    pretty_stats(benchmark_stats[:lbfgs])
 end
 
 main()
