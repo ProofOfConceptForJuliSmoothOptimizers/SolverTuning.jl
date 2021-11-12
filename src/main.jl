@@ -84,7 +84,7 @@ function main()
         solver,
         default_black_box,
         default_black_box_surrogate,
-        false,
+        true,
     )
     # CUTEst selection parameters
     bb_kwargs = Dict(:min_var => 1, :max_var => 100, :max_con => 0, :only_free_var => true)
@@ -92,8 +92,7 @@ function main()
     create_nomad_problem!(
         param_optimization_problem,
         bb_kwargs;
-        max_time = 300,
-        display_unsuccessful = true,
+        display_all_eval = true,
     )
     # Execute Nomad
     result = solve_with_nomad!(param_optimization_problem)

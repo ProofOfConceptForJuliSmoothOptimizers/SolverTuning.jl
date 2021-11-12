@@ -62,14 +62,11 @@ function eval_fct(
     use_surrogate = problem.use_surrogate
     black_box = problem.black_box
     surrogate_model = problem.surrogate_model
-    [
-        set_default!(param, param_value) for
-        (param, param_value) in zip(algorithmic_params, v)
-    ]
     success = false
     count_eval = false
     black_box_output = [typemax(Float64)]
     try
+        [set_default!(param, param_value) for(param, param_value) in zip(algorithmic_params, v)]
         if use_surrogate
             black_box_output = surrogate_model(bb_args...; kwargs...)
         else
