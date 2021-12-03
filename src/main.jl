@@ -23,10 +23,11 @@ include("lbfgs.jl")
 include("nomad_interface.jl")
 
 # important for stats creation 
-# id = 1
+id = 1
 # Define SolverBenchmark data:
-# benchmark_stats = Dict{Symbol, Any}(:lbfgs => DataFrame(id=Int64[], name=String[], status=Symbol[], f=Float64[], t=Float64[], iter=Int64[]))
+benchmark_stats = Dict{Symbol, Any}(:lbfgs => DataFrame(id=Int64[], name=String[], status=Symbol[], f=Float64[], t=Float64[], iter=Int64[]))
 
+# blackbox defined by user
 function default_black_box(
     solver_params::AbstractVector{P};
     stats = benchmark_stats[:lbfgs],
@@ -46,23 +47,24 @@ function default_black_box(
     return [max_time]
 end
 
+# Surrogate defined by user 
 function default_black_box_surrogate(
     solver_params::AbstractVector{P};
-    # stats = benchmark_stats[:lbfgs],
+    stats = benchmark_stats[:lbfgs],
     kwargs...,
 ) where {P<:AbstractHyperParameter}
     max_time = 0.0
     n_problems = 10
     problems = CUTEst.select(; kwargs...)
     for i in rand(1:length(problems), n_problems)
-        # global id
+        global id
         nlp = CUTEstModel(problems[i])
         result = @benchmark lbfgs($nlp, $solver_params) samples=40 evals=1
         finalize(nlp)
-        # push!(stats, [id, problems[i], result.status, result.objective, result.elapsed_time, result.iter])
+        push!(stats, [id, problems[i], result.status, result.objective, result.elapsed_time, result.iter])
         # result is given in ns. Converting to seconds:
         max_time += (median(result).time/1.0e9)
-        # id += 1
+        id += 1
     end
     return [max_time]
 end
@@ -99,7 +101,7 @@ function main()
     # Execute Nomad
     result = solve_with_nomad!(param_optimization_problem)
     println(result)
-    pretty_stats(benchmark_stats[:lbfgs])
+    # pretty_stats(benchmark_stats[:lbfgs])
 end
 
 main()
