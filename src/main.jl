@@ -1,6 +1,9 @@
 # stdlib
 using LinearAlgebra, Logging, Printf, DataFrames
 
+# Distributed computing
+using ClusterManagers, Distributed
+
 # JSO packages
 using Krylov,
     LinearOperators,
@@ -22,86 +25,138 @@ include("parameters.jl")
 include("lbfgs.jl")
 include("nomad_interface.jl")
 
-# important for stats creation 
-id = 1
-# Define SolverBenchmark data:
-benchmark_stats = Dict{Symbol, Any}(:lbfgs => DataFrame(id=Int64[], name=String[], status=Symbol[], f=Float64[], t=Float64[], iter=Int64[]))
+# setup julia workers on SGE:
+nb_sge_nodes = 24
+worker_pids = addprocs_sge(nb_sge_nodes; qsub_flags=`-q hs22 -V`, exeflags="--project=.", wd=joinpath(ENV["HOME"], "julia_worker_logs"))
+
+# Define functions on all workers
+@everywhere let packages = ["Krylov","LinearOperators","NLPModels","NLPModelsModifiers","SolverCore",
+    "SolverTools","ADNLPModels","SolverTest","CUTEst"]
+    using Pkg
+    Pkg.add(packages)
+    using Distributed
+    Krylov,
+    LinearOperators,
+    NLPModels,
+    NLPModelsModifiers,
+    SolverCore,
+    SolverTools,
+    ADNLPModels,
+    SolverTest,
+    CUTEst,
+    BenchmarkTools
+end
+
+@everywhere function evalmodels(problem_names::Vector{String}, solver_params::Vector{P}) where {P<:AbstractHyperParameter}
+    time = 0.0
+    for problem_name in problem_names
+        nlp = CUTEstModel(problem_name; decode=false)
+        benchmark = @benchmarkable lbfgs($nlp, $solver_params) seconds=300 samples=5 evals=1
+        result = run(benchmark)
+        finalize(nlp)
+        # result is given in ns. Converting to seconds:
+        time += (median(result).time/1.0e9)
+    end
+    return time
+end
 
 # blackbox defined by user
 function default_black_box(
     solver_params::AbstractVector{P};
-    stats = benchmark_stats[:lbfgs],
+    workers=worker_pids,
+    problem_batches=batches,
     kwargs...,
 ) where {P<:AbstractHyperParameter}
-    max_time = 0.0
-    problems = CUTEst.select(; kwargs...)
-    for problem in problems
-        global id
-        nlp = CUTEstModel(problem)
-        result = lbfgs(nlp, solver_params)
-        finalize(nlp)
-        push!(stats, [id, problem, result.status, result.objective, result.elapsed_time, result.iter])
-        max_time += result.elapsed_time
-        id += 1
+    total_time = 0.0
+    futures = Future[]
+    for (worker_id, batch) in zip(workers, problem_batches)
+        future_time = @spawnat worker_id evalmodels(batch, solver_params)
+        push!(futures, future_time)
     end
-    return [max_time]
+    @sync for time_future in futures
+        @async begin
+            solver_time = fetch(time_future)
+            total_time += solver_time
+        end
+    end
+
+    return [total_time]
 end
 
 # Surrogate defined by user 
 function default_black_box_surrogate(
     solver_params::AbstractVector{P};
-    stats = benchmark_stats[:lbfgs],
     kwargs...,
 ) where {P<:AbstractHyperParameter}
     max_time = 0.0
-    n_problems = 10
     problems = CUTEst.select(; kwargs...)
-    for i in rand(1:length(problems), n_problems)
-        global id
-        nlp = CUTEstModel(problems[i])
-        result = @benchmark lbfgs($nlp, $solver_params) samples=40 evals=1
+    for problem in problems
+        nlp = CUTEstModel(problem)
         finalize(nlp)
-        push!(stats, [id, problems[i], result.status, result.objective, result.elapsed_time, result.iter])
-        # result is given in ns. Converting to seconds:
-        max_time += (median(result).time/1.0e9)
-        id += 1
     end
     return [max_time]
 end
 
-function main()
-    nlp = ADNLPModel(
-        x -> (x[1] - 1)^2 + 4 * (x[2] - 1)^2,
-        zeros(2),
-        name = "(x₁ - 1)² + 4(x₂ - 1)²",
-    )
-    # define params:
-    mem = AlgorithmicParameter(5, IntegerRange(1, 100), "mem")
-    τ₁ = AlgorithmicParameter(Float64(0.99), RealInterval(Float64(1.0e-4), 1.0), "τ₁")
-    scaling = AlgorithmicParameter(true, BinaryRange(), "scaling")
-    bk_max = AlgorithmicParameter(25, IntegerRange(10, 30), "bk_max")
-    lbfgs_params = [mem, τ₁, scaling, bk_max]
-    # define paramter tuning problem:
-    solver = LBFGSSolver(nlp, lbfgs_params)
-    # define problem suite
-    param_optimization_problem = ParameterOptimizationProblem(
-        solver,
-        default_black_box,
-        default_black_box_surrogate,
-        true,
-    )
-    # CUTEst selection parameters
-    bb_kwargs = Dict(:min_var => 1, :max_var => 100, :max_con => 0, :only_free_var => true)
-    # named arguments are options to pass to Nomad
-    create_nomad_problem!(
-        param_optimization_problem,
-        bb_kwargs;
-        display_all_eval = true,
-    )
-    # Execute Nomad
-    result = solve_with_nomad!(param_optimization_problem)
-    println(result)
-    # pretty_stats(benchmark_stats[:lbfgs])
-end
+nlp = ADNLPModel(
+    x -> (x[1] - 1)^2 + 4 * (x[2] - 1)^2,
+    zeros(2),
+    name = "(x₁ - 1)² + 4(x₂ - 1)²",
+)
+# define params:
+mem = AlgorithmicParameter(5, IntegerRange(1, 100), "mem")
+τ₁ = AlgorithmicParameter(Float64(0.99), RealInterval(Float64(1.0e-4), 1.0), "τ₁")
+scaling = AlgorithmicParameter(true, BinaryRange(), "scaling")
+bk_max = AlgorithmicParameter(25, IntegerRange(10, 30), "bk_max")
+lbfgs_params = [mem, τ₁, scaling, bk_max]
+initial_lbfgs_params = deepcopy(lbfgs_params)
 
-main()
+# define paramter tuning problem:
+solver = LBFGSSolver(nlp, lbfgs_params)
+
+# define problem suite
+param_optimization_problem = ParameterOptimizationProblem(
+    solver,
+    default_black_box,
+    default_black_box_surrogate,
+    false,
+)
+
+# CUTEst problem selection and creation of problem batches:
+bb_kwargs = Dict(:min_var => 1, :max_var => 100, :max_con => 0, :only_free_var => true)
+cutest_problems = CUTEst.select(;bb_kwargs...)
+broadcast(p -> finalize(CUTEstModel(p)), cutest_problems)
+batches = [[] for i in 1:nb_sge_nodes]
+let idx = 0
+    while length(cutest_problems) > 0
+        problem = pop!(cutest_problems)
+        push!(batches[(idx % n_workers)  + 1], problem)
+        idx += 1
+    end
+end
+broadcast(x -> println(length(x)), batches)
+
+# named arguments are options to pass to Nomad
+create_nomad_problem!(
+    param_optimization_problem,
+    bb_kwargs;
+    display_all_eval = true,
+    max_time = 300,
+)
+
+# Execute Nomad
+result = solve_with_nomad!(param_optimization_problem)
+println(result)
+
+# SolverBenchmark stats:
+problems = (CUTEstModel(p) for p in CUTEst.select(;bb_kwargs...))
+solvers = Dict(
+  :lbfgs_old => model -> lbfgs(model, initial_lbfgs_params),
+  :lbfgs_new => model -> lbfgs(model, param_optimization_problem.solver.parameters)
+)
+stats = bmark_solvers(solvers, problems)
+
+open(joinpath(ENV["HOME"],"problem_stats.md"), "w") do io
+    pretty_stats(io, stats)
+end
+    
+
