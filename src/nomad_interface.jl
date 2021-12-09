@@ -75,7 +75,11 @@ function eval_fct(
         success = true
         count_eval = true
     catch exception
-        println("exception occured while solving:\t $exception")
+        println("exception occured while solving")
+        showerror(stdout, exception)
+        if isa(exception, CompositeException)
+            showerror(stdout, exception.exceptions[1])
+        end
     finally
         return success, count_eval, black_box_output
     end
