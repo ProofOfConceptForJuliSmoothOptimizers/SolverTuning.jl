@@ -11,7 +11,7 @@ end
 
 function create_batches(nb_batches::Int64; kwargs...)
     # CUTEst problem selection and creation of problem batches:
-    cutest_problems = CUTEst.select(;kwargs...)[1:nb_sge_nodes]
+    cutest_problems = CUTEst.select(;kwargs...)
     broadcast(decode_model, cutest_problems)
     batches = [[] for _ in 1:nb_sge_nodes]
     let idx = 0
@@ -51,31 +51,26 @@ function default_black_box(
     problem_batches=batches,
     kwargs...,
 ) where {P<:AbstractHyperParameter}
-    total_time = 0.0
-    futures = Future[]
-    println("decoding cutest problems")
+    futures = Dict{Int, Future}()
     broadcast(b -> broadcast(decode_model, b), problem_batches)
-    for (worker_id, batch) in zip(workers, problem_batches)
-        future_time = @spawnat worker_id let time= 0.0
+    @sync for (worker_id, batch) in zip(workers, problem_batches)
+        @async futures[worker_id] = @spawnat worker_id let time= 0.0
             for problem_name in batch
                 nlp = CUTEstModel(problem_name; decode=false)
-                bmark_result = @benchmark lbfgs($nlp, $solver_params) seconds=60 samples=5 evals=1
+                bmark_result = @benchmark lbfgs($nlp, $solver_params) seconds=10 samples=5 evals=1
                 finalize(nlp)
                 finalize(nlp)
                 time += (median(bmark_result).time/1.0e9)
             end
             return time
         end
-        push!(futures, future_time)
     end
-    @sync for time_future in futures
-        @async begin
-            solver_time = fetch(time_future)
-            total_time += solver_time
-        end
+    solver_times = Dict{Int, Float64}()
+    @sync for worker_id in workers
+        @async solver_times[worker_id] = fetch(futures[worker_id])
     end
 
-    return [total_time]
+    return [sum(values(solver_times))]
 end
 
 # Surrogate defined by user 
@@ -105,31 +100,12 @@ create_nomad_problem!(
     param_optimization_problem,
     bb_kwargs;
     display_all_eval = true,
-    max_time = 300,
+    max_time = 36000
 )
 
 # Execute Nomad
 result = solve_with_nomad!(param_optimization_problem)
 println(result)
-
-# SolverBenchmark stats:
-# problems = (CUTEstModel(p) for p in CUTEst.select(;bb_kwargs...))
-# solvers = Dict(
-#   :lbfgs_old => model -> lbfgs(model, initial_lbfgs_params),
-#   :lbfgs_new => model -> lbfgs(model, param_optimization_problem.solver.parameters)
-# )
-
-# stats = with_logger(NullLogger()) do
-#     bmark_solvers(solvers, problems)
-# end
-
-# open(joinpath(ENV["HOME"],"lbfgs_old_stats.md"), "w") do io
-#     pretty_stats(io, stats[:lbfgs_old])
-# end
-
-# open(joinpath(ENV["HOME"],"lbfgs_new_stats.md"), "w") do io
-#     pretty_stats(io, stats[:lbfgs_new])
-# end
 
 rmprocs(workers())
     

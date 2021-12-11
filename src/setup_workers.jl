@@ -1,4 +1,4 @@
-nb_sge_nodes = 10
+nb_sge_nodes = 20
 try
     # setup julia workers on SGE:
     addprocs_sge(nb_sge_nodes; qsub_flags=`-q hs22 -V`, exeflags="--project=.", wd=joinpath(ENV["HOME"], "julia_worker_logs"))
