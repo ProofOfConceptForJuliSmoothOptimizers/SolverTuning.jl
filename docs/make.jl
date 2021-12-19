@@ -1,7 +1,12 @@
 using ParameterOptimization
 using Documenter
 
-DocMeta.setdocmeta!(ParameterOptimization, :DocTestSetup, :(using ParameterOptimization); recursive = true)
+DocMeta.setdocmeta!(
+  ParameterOptimization,
+  :DocTestSetup,
+  :(using ParameterOptimization);
+  recursive = true,
+)
 
 makedocs(;
   modules = [ParameterOptimization],
