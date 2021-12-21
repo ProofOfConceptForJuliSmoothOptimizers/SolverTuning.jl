@@ -1,5 +1,5 @@
-nb_sge_nodes = 20
 try
+  nb_sge_nodes = 20
   # setup julia workers on SGE:
   addprocs_sge(
     nb_sge_nodes;
@@ -8,26 +8,26 @@ try
     wd = joinpath(ENV["HOME"], "julia_worker_logs"),
   )
 
-  # Define std packages
   println("Standard package definition:")
   @everywhere begin
     using Pkg, Distributed
     using LinearAlgebra, Logging, Printf, DataFrames
   end
+
   # Define JSO packages
   println("JSO package definition:")
   @everywhere begin
     using Krylov,
       LinearOperators,
       NLPModels,
-      NLPModelsJuMP
+      NLPModelsJuMP,
+      OptimizationProblems,
+      OptimizationProblems.PureJuMP,
       NLPModelsModifiers,
       SolverCore,
       SolverTools,
       ADNLPModels,
       SolverTest,
-      OptimizationProblems,
-      OptimizationProblems.PureJuMP,
       SolverBenchmark,
       BenchmarkTools
   end
@@ -50,7 +50,7 @@ catch e
   if isa(e, CompositeException)
     # println(e.exceptions)
     println("This is a composite exception:")
-    broadcast(err -> showerror(stdout, err), e.exceptions)
+    showerror(stdout, first(e.exceptions))
   else
     showerror(stdout, e)
   end

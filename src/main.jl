@@ -22,7 +22,7 @@ Define blackbox:
 
 #define problems
 problem_generator = (MathOptNLPModel(eval(problem)(), name=string(problem)) for problem ∈ filter(x -> x != :PureJuMP, names(OptimizationProblems.PureJuMP)))
-problems = collect(Iterators.filter(x -> unconstrained(x) && get_nvar(x) ≥ 1 && get_nvar(x) ≤ 100, problems))
+problems = collect(Iterators.filter(x -> unconstrained(x) && get_nvar(x) ≥ 1 && get_nvar(x) ≤ 100, problem_generator))
 solver = LBFGSSolver(first(problems), lbfgs_params)
 args = []
 kwargs = Dict{Symbol, Any}()
@@ -30,13 +30,13 @@ black_box = BlackBox(solver, args, kwargs, problems)
 
 # define problem suite
 param_optimization_problem =
-  ParameterOptimizationProblem(black_box, false)
+  ParameterOptimizationProblem(black_box)
 
 # named arguments are options to pass to Nomad
 create_nomad_problem!(
   param_optimization_problem;
   display_all_eval = true,
-  max_time = 36000,
+  max_time = 18000,
 )
 
 # Execute Nomad

@@ -10,7 +10,7 @@ end
 # TODO: Add Parametric type to solver (e.g Abstract Solver)
 function ParameterOptimizationProblem(
   black_box::BlackBox{S, F, A, K, P},
-) where {S <: LBFGSSolver, F, A, K}
+) where {S <: LBFGSSolver, F, A, K, P <: AbstractNLPModel}
   ParameterOptimizationProblem(nothing, black_box)
 end
 
@@ -78,12 +78,12 @@ end
 function check_problem(
   p::ParameterOptimizationProblem{S, F, A, K, P},
 ) where {S <: LBFGSSolver, F, A, K, P <: AbstractNLPModel}
-  # @assert !p.use_surrogate || !isnothing(p.surrogate_model) "error: cannot use surrogate model if no surrogate model is defined"
+  @assert !isnothing(p.black_box) "error: Black Box not defined"
 end
 
 function solve_with_nomad!(
   problem::ParameterOptimizationProblem{S, F, A, K, P},
 ) where {S <: LBFGSSolver, F, A, K, P <: AbstractNLPModel}
   check_problem(problem)
-  solve(problem.nomad, current_param_values(problem.solver.parameters))
+  solve(problem.nomad, current_param_values(problem.black_box.solver.parameters))
 end
