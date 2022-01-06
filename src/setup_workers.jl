@@ -30,7 +30,21 @@ try
       SolverTest,
       SolverBenchmark,
       BenchmarkTools
+    import BenchmarkTools.hasevals
+    import BenchmarkTools.prunekwargs
+    import BenchmarkTools.Benchmark
+    import BenchmarkTools.Parameters
+    import BenchmarkTools.run_result
   end
+
+  # 1. Define function to instantiate problems on  workers: 
+  @everywhere workers() worker_problems = Vector{Symbol}()
+
+  @everywhere function add_worker_problem(problem_name::Symbol)
+    global worker_problems
+    push!(worker_problems, problem_name)
+  end
+
   # Define Nomad:
   println("Nomad package definition:")
   @everywhere begin
@@ -42,6 +56,7 @@ try
     include("domains.jl")
     include("parameters.jl")
     include("lbfgs.jl")
+    include("benchmark_macros.jl")
     include("black_box.jl")
     include("nomad_interface.jl")
   end

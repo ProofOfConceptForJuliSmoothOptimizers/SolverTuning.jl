@@ -18,12 +18,20 @@ Define blackbox:
 4. black box keyword arguments
 5. solver
 """
-# define solver:
+
+@everywhere function get_problem(problem_name::Symbol)
+  MathOptNLPModel(eval(problem_name)(),name=string(problem_name))
+end
 
 #define problems
-problem_generator = (MathOptNLPModel(eval(problem)(), name=string(problem)) for problem ∈ filter(x -> x != :PureJuMP, names(OptimizationProblems.PureJuMP)))
-problems = collect(Iterators.filter(x -> unconstrained(x) && get_nvar(x) ≥ 1 && get_nvar(x) ≤ 100, problem_generator))
-solver = LBFGSSolver(first(problems), lbfgs_params)
+problems = Dict{Symbol, Union{Nothing,AbstractExecutionStats}}()
+for p in filter(x -> x != :PureJuMP, names(OptimizationProblems.PureJuMP))
+  nlp = MathOptNLPModel(eval(p)(), name=string(p))
+  if unconstrained(nlp) && get_nvar(nlp) ≥ 1 && get_nvar(nlp) ≤ 100
+    problems[p] = nothing
+  end
+end
+solver = LBFGSSolver(get_problem(first(keys(problems))), lbfgs_params)
 args = []
 kwargs = Dict{Symbol, Any}()
 black_box = BlackBox(solver, args, kwargs, problems)

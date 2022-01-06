@@ -2,7 +2,7 @@
 Struct that defines a problem that will be sent to NOMAD.jl.
 TODO: Docs string
 """
-mutable struct ParameterOptimizationProblem{S, F, A, K, P <: AbstractNLPModel}
+mutable struct ParameterOptimizationProblem{S, F, A, K, P}
   nomad::Union{Nothing, NomadProblem}
   black_box::BlackBox{S, F, A, K, P}
 end
@@ -10,14 +10,14 @@ end
 # TODO: Add Parametric type to solver (e.g Abstract Solver)
 function ParameterOptimizationProblem(
   black_box::BlackBox{S, F, A, K, P},
-) where {S <: LBFGSSolver, F, A, K, P <: AbstractNLPModel}
+) where {S <: LBFGSSolver, F, A, K, P}
   ParameterOptimizationProblem(nothing, black_box)
 end
 
 function create_nomad_problem!(
   param_opt_problem::ParameterOptimizationProblem{S, F, A, K, P};
   kwargs...,
-) where {S <: LBFGSSolver, F, A, K, P <: AbstractNLPModel}
+) where {S <: LBFGSSolver, F, A, K, P}
   # eval function:
   function eval_function(v::AbstractVector{Float64}; problem = param_opt_problem)
     eval_fct(v, problem)
@@ -42,7 +42,7 @@ end
 function eval_fct(
   v::AbstractVector{Float64},
   param_opt_problem::ParameterOptimizationProblem{S, F, A, K, P},
-) where {S <: LBFGSSolver, F, A, K, P <: AbstractNLPModel}
+) where {S <: LBFGSSolver, F, A, K, P}
   success = false
   count_eval = false
   black_box_output = [Inf64]
@@ -64,7 +64,7 @@ end
 function run_optim_problem(
   param_opt_problem::ParameterOptimizationProblem{S, F, A, K, P},
   new_param_values::AbstractVector{Float64},
-) where {S <: LBFGSSolver, F, A, K, P <: AbstractNLPModel}
+) where {S <: LBFGSSolver, F, A, K, P}
   return run_black_box(param_opt_problem.black_box, new_param_values)
 end
 
@@ -77,13 +77,13 @@ end
 # Function that validates a parameter optimization problem
 function check_problem(
   p::ParameterOptimizationProblem{S, F, A, K, P},
-) where {S <: LBFGSSolver, F, A, K, P <: AbstractNLPModel}
+) where {S <: LBFGSSolver, F, A, K, P}
   @assert !isnothing(p.black_box) "error: Black Box not defined"
 end
 
 function solve_with_nomad!(
   problem::ParameterOptimizationProblem{S, F, A, K, P},
-) where {S <: LBFGSSolver, F, A, K, P <: AbstractNLPModel}
+) where {S <: LBFGSSolver, F, A, K, P}
   check_problem(problem)
   solve(problem.nomad, current_param_values(problem.black_box.solver.parameters))
 end
