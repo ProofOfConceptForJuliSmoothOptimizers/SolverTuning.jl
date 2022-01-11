@@ -31,10 +31,21 @@ for p in filter(x -> x != :PureJuMP, names(OptimizationProblems.PureJuMP))
     problems[p] = nothing
   end
 end
+set_worker_problems(problems)
 solver = LBFGSSolver(get_problem(first(keys(problems))), lbfgs_params)
-args = []
-kwargs = Dict{Symbol, Any}()
-black_box = BlackBox(solver, args, kwargs, problems)
+
+# define user's blackbox:
+function my_black_box(args...;kwargs...)
+  solver_results = eval_solver(lbfgs, args...;kwargs...)
+  bmark_results = Dict(i=> b for (i,(b,s)) in solver_results)
+  stats_results = Dict(i => s for (i,(b,s)) in solver_results)
+  times = sum((median(bmark).time/1.0e9) for bmarks ∈ values(bmark_results) for bmark in bmarks)
+  return [times]
+end
+# args = [solver.parameters]
+kwargs = Dict{Symbol, Any}(:verbose => false)
+black_box = BlackBox(solver, my_black_box, kwargs)
+
 
 # define problem suite
 param_optimization_problem =
@@ -44,11 +55,13 @@ param_optimization_problem =
 create_nomad_problem!(
   param_optimization_problem;
   display_all_eval = true,
-  max_time = 18000,
+  max_time = 180000,
+  max_bb_eval = 2,
+  display_stats = ["BBE", "EVAL", "SOL", "OBJ"],
 )
 
 # Execute Nomad
 result = solve_with_nomad!(param_optimization_problem)
 println(result)
-
+println("Best feasible parameters: $(result.x_best_feas)")
 rmprocs(workers())

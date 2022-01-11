@@ -2,22 +2,22 @@
 Struct that defines a problem that will be sent to NOMAD.jl.
 TODO: Docs string
 """
-mutable struct ParameterOptimizationProblem{S, F, A, K, P}
+mutable struct ParameterOptimizationProblem{S, F<:Function, A, K}
   nomad::Union{Nothing, NomadProblem}
-  black_box::BlackBox{S, F, A, K, P}
+  black_box::BlackBox{S, F, A, K}
 end
 
 # TODO: Add Parametric type to solver (e.g Abstract Solver)
 function ParameterOptimizationProblem(
-  black_box::BlackBox{S, F, A, K, P},
-) where {S <: LBFGSSolver, F, A, K, P}
+  black_box::BlackBox{S, F, A, K},
+) where {S <: LBFGSSolver, F<:Function, A, K}
   ParameterOptimizationProblem(nothing, black_box)
 end
 
 function create_nomad_problem!(
-  param_opt_problem::ParameterOptimizationProblem{S, F, A, K, P};
+  param_opt_problem::ParameterOptimizationProblem{S, F, A, K};
   kwargs...,
-) where {S <: LBFGSSolver, F, A, K, P}
+) where {S <: LBFGSSolver, F<:Function, A, K}
   # eval function:
   function eval_function(v::AbstractVector{Float64}; problem = param_opt_problem)
     eval_fct(v, problem)
@@ -41,8 +41,8 @@ end
 # define eval function here: 
 function eval_fct(
   v::AbstractVector{Float64},
-  param_opt_problem::ParameterOptimizationProblem{S, F, A, K, P},
-) where {S <: LBFGSSolver, F, A, K, P}
+  param_opt_problem::ParameterOptimizationProblem{S, F, A, K},
+) where {S <: LBFGSSolver, F<:Function, A, K}
   success = false
   count_eval = false
   black_box_output = [Inf64]
@@ -62,9 +62,9 @@ function eval_fct(
 end
 
 function run_optim_problem(
-  param_opt_problem::ParameterOptimizationProblem{S, F, A, K, P},
+  param_opt_problem::ParameterOptimizationProblem{S, F, A, K},
   new_param_values::AbstractVector{Float64},
-) where {S <: LBFGSSolver, F, A, K, P}
+) where {S <: LBFGSSolver, F<:Function, A, K}
   return run_black_box(param_opt_problem.black_box, new_param_values)
 end
 
@@ -76,14 +76,14 @@ end
 
 # Function that validates a parameter optimization problem
 function check_problem(
-  p::ParameterOptimizationProblem{S, F, A, K, P},
-) where {S <: LBFGSSolver, F, A, K, P}
+  p::ParameterOptimizationProblem{S, F, A, K},
+) where {S <: LBFGSSolver, F<:Function, A, K}
   @assert !isnothing(p.black_box) "error: Black Box not defined"
 end
 
 function solve_with_nomad!(
-  problem::ParameterOptimizationProblem{S, F, A, K, P},
-) where {S <: LBFGSSolver, F, A, K, P}
+  problem::ParameterOptimizationProblem{S, F, A, K},
+) where {S <: LBFGSSolver, F<:Function, A, K, P}
   check_problem(problem)
   solve(problem.nomad, current_param_values(problem.black_box.solver.parameters))
 end

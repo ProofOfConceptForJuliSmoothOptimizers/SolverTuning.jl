@@ -30,6 +30,8 @@ try
       SolverTest,
       SolverBenchmark,
       BenchmarkTools
+
+    using BenchmarkTools:Trial
     import BenchmarkTools.hasevals
     import BenchmarkTools.prunekwargs
     import BenchmarkTools.Benchmark
