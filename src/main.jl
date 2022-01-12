@@ -19,20 +19,16 @@ Define blackbox:
 5. solver
 """
 
-@everywhere function get_problem(problem_name::Symbol)
-  MathOptNLPModel(eval(problem_name)(),name=string(problem_name))
-end
-
 #define problems
-problems = Dict{Symbol, Union{Nothing,AbstractExecutionStats}}()
-for p in filter(x -> x != :PureJuMP, names(OptimizationProblems.PureJuMP))
-  nlp = MathOptNLPModel(eval(p)(), name=string(p))
-  if unconstrained(nlp) && get_nvar(nlp) ≥ 1 && get_nvar(nlp) ≤ 100
-    problems[p] = nothing
-  end
-end
+problems = (MathOptNLPModel(eval(p)(),name=string(p)) for p ∈ filter(x -> x != :PureJuMP, names(OptimizationProblems.PureJuMP)))
+
+problems = Iterators.filter(p -> unconstrained(p) &&  5 ≤ get_nvar(p) ≤ 100, problems)
+
 set_worker_problems(problems)
-solver = LBFGSSolver(get_problem(first(keys(problems))), lbfgs_params)
+
+# Define solver
+solver = LBFGSSolver(first(problems), lbfgs_params)
+
 
 # define user's blackbox:
 function my_black_box(args...;kwargs...)

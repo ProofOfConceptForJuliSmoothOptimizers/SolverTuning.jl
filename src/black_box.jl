@@ -60,8 +60,7 @@ function eval_solver(solver_function::F, solver_params::AbstractVector{P}, args.
   @sync for worker_id in workers()
     @async futures[worker_id] = @spawnat worker_id let bmark_results=Array{Trial}(undef, length(worker_problems)), stats=Array{AbstractExecutionStats}(undef, length(worker_problems))
       global worker_problems
-      for (i,p) in enumerate(worker_problems)
-        nlp = get_problem(p)
+      for (i,nlp) in enumerate(worker_problems)
         bmark_result, stat = @benchmark_with_result $solver_function($nlp, $solver_params, $args...; $kwargs...) seconds = 10 samples = 5 evals = 1
         bmark_results[i] = bmark_result
         stats[i] = stat
@@ -77,18 +76,3 @@ function eval_solver(solver_function::F, solver_params::AbstractVector{P}, args.
   return solver_results
 end
 
-function set_worker_problems(problems::Dict{Symbol, P}) where {P}
-  problem_def_future = Future[]
-  problem_names = keys(problems)
-    for worker_id in Iterators.cycle(workers())
-        try
-            problem, problem_names = Iterators.peel(problem_names)
-            push!(problem_def_future, remotecall(add_worker_problem, worker_id, problem))
-        catch exception
-          !isa(exception, BoundsError) || break
-        end
-    end
-    @sync for problem_future in problem_def_future
-      @async fetch(problem_future)
-    end
-end

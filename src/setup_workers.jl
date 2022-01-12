@@ -40,11 +40,26 @@ try
   end
 
   # 1. Define function to instantiate problems on  workers: 
-  @everywhere workers() worker_problems = Vector{Symbol}()
+  @everywhere workers() worker_problems = Vector{AbstractNLPModel}()
 
-  @everywhere function add_worker_problem(problem_name::Symbol)
+  @everywhere function set_worker_problems(problems)
+    problem_def_future = Future[]
+      for worker_id in Iterators.cycle(workers())
+          try
+            problem, problems = Iterators.peel(problems)
+            push!(problem_def_future, remotecall(set_worker_problem, worker_id, problem))
+          catch exception
+            !isa(exception, BoundsError) || break
+          end
+      end
+      @sync for problem_future in problem_def_future
+        @async fetch(problem_future)
+      end
+  end
+
+  @everywhere function set_worker_problem(problem::P) where {P <: AbstractNLPModel} 
     global worker_problems
-    push!(worker_problems, problem_name)
+    push!(worker_problems, problem)
   end
 
   # Define Nomad:
