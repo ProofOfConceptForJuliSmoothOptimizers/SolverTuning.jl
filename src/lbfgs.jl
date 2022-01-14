@@ -5,7 +5,7 @@ mutable struct LBFGSSolver{
   Op <: AbstractLinearOperator,
   P <: AbstractHyperParameter,
   M <: AbstractNLPModel,
-}
+} <: AbstractOptSolver{T, V}
   parameters::Vector{P}
   x::V
   xt::V
@@ -52,7 +52,7 @@ function solve!(
   rtol::Real = √eps(T),
   max_eval::Int = -1,
   max_time::Float64 = 30.0,
-  verbose::Bool = true,
+  verbose::Bool = false,
 ) where {T, V}
   if !(nlp.meta.minimize)
     error("lbfgs only works for minimization problem")
@@ -84,11 +84,11 @@ function solve!(
   iter = 0
 
   # TODO: Unconmment later
-  # @info log_header(
-  #     [:iter, :f, :dual, :slope, :bk],
-  #     [Int, T, T, T, Int],
-  #     hdr_override = Dict(:f => "f(x)", :dual => "‖∇f‖", :slope => "∇fᵀd"),
-  # )
+  !verbose || @info log_header(
+      [:iter, :f, :dual, :slope, :bk],
+      [Int, T, T, T, Int],
+      hdr_override = Dict(:f => "f(x)", :dual => "‖∇f‖", :slope => "∇fᵀd"),
+  )
 
   optimal = ∇fNorm ≤ ϵ
   tired = neval_obj(nlp) > max_eval ≥ 0 || elapsed_time > max_time
@@ -111,7 +111,7 @@ function solve!(
     t, good_grad, ft, nbk, nbW =
       armijo_wolfe(h, f, slope, ∇ft, τ₁ = τ₁_slope_factor, bk_max = max_bk, verbose = false)
 
-    # @info log_row(Any[iter, f, ∇fNorm, slope, nbk])
+    !verbose || @info log_row(Any[iter, f, ∇fNorm, slope, nbk])
 
     copyaxpy!(n, t, d, x, xt)
     good_grad || grad!(nlp, xt, ∇ft)
@@ -133,7 +133,7 @@ function solve!(
     elapsed_time = time() - start_time
     tired = neval_obj(nlp) > max_eval ≥ 0 || elapsed_time > max_time
   end
-  # @info log_row(Any[iter, f, ∇fNorm])
+  !verbose || @info log_row(Any[iter, f, ∇fNorm])
 
   if optimal
     status = :first_order

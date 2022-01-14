@@ -30,7 +30,7 @@ try
       SolverTest,
       SolverBenchmark,
       BenchmarkTools
-
+    using JSOSolvers:AbstractOptSolver
     using BenchmarkTools:Trial
     import BenchmarkTools.hasevals
     import BenchmarkTools.prunekwargs

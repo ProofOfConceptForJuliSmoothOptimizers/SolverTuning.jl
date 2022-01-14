@@ -25,24 +25,24 @@ bb_args:
 bb_kwargs:
     The black box's keyword arguments. Can be empty.
 """
-mutable struct BlackBox{S, F<:Function, A, K}
+mutable struct BlackBox{S <: AbstractOptSolver, F<:Function, A, K}
   solver::S
   func::F
   args::Vector{A}
   kwargs::Dict{Symbol, K}
 
-  function BlackBox(solver::S, func::F, args::Vector{A}, kwargs::Dict{Symbol, K}) where {S, F<:Function, A, K}
+  function BlackBox(solver::S, func::F, args::Vector{A}, kwargs::Dict{Symbol, K}) where {S<: AbstractOptSolver, F<:Function, A, K}
     !isempty(args) || error("args must at least contain the solver parameters.")
     new{S,F,A,K}(solver, func, args, kwargs)
   end
 end
 
-function BlackBox(solver::S, func::F, kwargs::Dict{Symbol, K}) where {S, F<:Function, K}
+function BlackBox(solver::S, func::F, kwargs::Dict{Symbol, K}) where {S<: AbstractOptSolver, F<:Function, K}
   args = [solver.parameters]
   return BlackBox(solver, func, args, kwargs)
 end
 
-function run_black_box(black_box::BlackBox{S,F,A,K}, new_param_values::AbstractVector{Float64}) where {S,F<:Function,A,K}
+function run_black_box(black_box::BlackBox{S,F,A,K}, new_param_values::AbstractVector{Float64}) where {S<: AbstractOptSolver,F<:Function,A,K}
   bb_func = black_box.func
   solver_params = black_box.solver.parameters
   args = black_box.args
