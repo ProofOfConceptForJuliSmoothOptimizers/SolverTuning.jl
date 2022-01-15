@@ -2,22 +2,25 @@
 Struct that defines a problem that will be sent to NOMAD.jl.
 TODO: Docs string
 """
-mutable struct ParameterOptimizationProblem{S<: AbstractOptSolver, F<:Function, A, K}
+mutable struct ParameterOptimizationProblem{B <: BlackBox, L <: AbstractLoadBalancer}
   nomad::Union{Nothing, NomadProblem}
-  black_box::BlackBox{S, F, A, K}
+  black_box::B
+  load_balancer::L
+  nb_eval::Int
 end
 
 # TODO: Add Parametric type to solver (e.g Abstract Solver)
 function ParameterOptimizationProblem(
-  black_box::BlackBox{S, F, A, K},
-) where {S <: AbstractOptSolver, F<:Function, A, K}
-  ParameterOptimizationProblem(nothing, black_box)
+  black_box::B,
+  load_balancer::L,
+) where {B <: BlackBox, L <: AbstractLoadBalancer}
+  ParameterOptimizationProblem(nothing, black_box, load_balancer, 0)
 end
 
 function create_nomad_problem!(
-  param_opt_problem::ParameterOptimizationProblem{S, F, A, K};
+  param_opt_problem::ParameterOptimizationProblem{B, L};
   kwargs...,
-) where {S <: AbstractOptSolver, F<:Function, A, K}
+) where {B <: BlackBox, L <: AbstractLoadBalancer}
   # eval function:
   function eval_function(v::AbstractVector{Float64}; problem = param_opt_problem)
     eval_fct(v, problem)
@@ -41,15 +44,19 @@ end
 # define eval function here: 
 function eval_fct(
   v::AbstractVector{Float64},
-  param_opt_problem::ParameterOptimizationProblem{S, F, A, K},
-) where {S <: AbstractOptSolver, F<:Function, A, K}
+  param_opt_problem::ParameterOptimizationProblem{B, L},
+) where {B <: BlackBox, L <: AbstractLoadBalancer}
+  lb = param_opt_problem.load_balancer
   success = false
   count_eval = false
   black_box_output = [Inf64]
+  execute(lb, param_opt_problem.nb_eval)
   try
-    black_box_output = run_optim_problem(param_opt_problem, v)
+    black_box_output, bmark_results, stats_results = run_optim_problem(param_opt_problem, v)
+    update_problems(lb, bmark_results)
     success = true
     count_eval = true
+    param_opt_problem.nb_eval += 1
   catch exception
     println("exception occured while solving")
     showerror(stdout, exception)
@@ -62,9 +69,9 @@ function eval_fct(
 end
 
 function run_optim_problem(
-  param_opt_problem::ParameterOptimizationProblem{S, F, A, K},
+  param_opt_problem::ParameterOptimizationProblem{B, L},
   new_param_values::AbstractVector{Float64},
-) where {S <: AbstractOptSolver, F<:Function, A, K}
+) where {B <: BlackBox, L <: AbstractLoadBalancer}
   return run_black_box(param_opt_problem.black_box, new_param_values)
 end
 
@@ -76,14 +83,14 @@ end
 
 # Function that validates a parameter optimization problem
 function check_problem(
-  p::ParameterOptimizationProblem{S, F, A, K},
-) where {S <: AbstractOptSolver, F<:Function, A, K}
+  p::ParameterOptimizationProblem{B, L},
+) where {B <: BlackBox, L <: AbstractLoadBalancer}
   @assert !isnothing(p.black_box) "error: Black Box not defined"
 end
 
 function solve_with_nomad!(
-  problem::ParameterOptimizationProblem{S, F, A, K},
-) where {S <: AbstractOptSolver, F<:Function, A, K, P}
+  problem::ParameterOptimizationProblem{B, L},
+) where {B <: BlackBox, L <: AbstractLoadBalancer}
   check_problem(problem)
   solve(problem.nomad, current_param_values(problem.black_box.solver.parameters))
 end

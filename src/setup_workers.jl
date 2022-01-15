@@ -8,14 +8,14 @@ try
     wd = joinpath(ENV["HOME"], "julia_worker_logs"),
   )
 
-  println("Standard package definition:")
+  @info "Standard package definition:"
   @everywhere begin
     using Pkg, Distributed
     using LinearAlgebra, Logging, Printf, DataFrames
   end
 
   # Define JSO packages
-  println("JSO package definition:")
+  @info "JSO package definition:"
   @everywhere begin
     using Krylov,
       LinearOperators,
@@ -42,28 +42,19 @@ try
   # 1. Define function to instantiate problems on  workers: 
   @everywhere workers() worker_problems = Vector{AbstractNLPModel}()
 
-  @everywhere function set_worker_problems(problems)
-    problem_def_future = Future[]
-      for worker_id in Iterators.cycle(workers())
-          try
-            problem, problems = Iterators.peel(problems)
-            push!(problem_def_future, remotecall(set_worker_problem, worker_id, problem))
-          catch exception
-            !isa(exception, BoundsError) || break
-          end
-      end
-      @sync for problem_future in problem_def_future
-        @async fetch(problem_future)
-      end
+  @everywhere function push_worker_problems(problems:: Vector{P}) where {P <: AbstractNLPModel}
+    global worker_problems
+    push!(worker_problems, problems...)
   end
 
-  @everywhere function set_worker_problem(problem::P) where {P <: AbstractNLPModel} 
+  @everywhere function clear_worker_problems()
     global worker_problems
-    push!(worker_problems, problem)
+    worker_problems = Vector{AbstractNLPModel}()
+    return worker_problems
   end
 
   # Define Nomad:
-  println("Nomad package definition:")
+  @info "Nomad package definition:"
   @everywhere begin
     using NOMAD
     using NOMAD: NomadOptions
@@ -75,6 +66,7 @@ try
     include("lbfgs.jl")
     include("benchmark_macros.jl")
     include("black_box.jl")
+    include("load_balancer.jl")
     include("nomad_interface.jl")
   end
 catch e

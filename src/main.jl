@@ -32,7 +32,7 @@ problems = (MathOptNLPModel(eval(p)(),name=string(p)) for p ∈ filter(x -> x !=
 
 problems = Iterators.filter(p -> unconstrained(p) &&  5 ≤ get_nvar(p) ≤ 1000 && get_minimize(p), problems )
 
-set_worker_problems(problems)
+problem_dict = Dict(nlp => 30*rand(Float64) for nlp ∈ problems)
 
 # Define solver
 solver = LBFGSSolver(first(problems), lbfgs_params)
@@ -40,30 +40,32 @@ solver = LBFGSSolver(first(problems), lbfgs_params)
 
 # define user's blackbox:
 function my_black_box(args...;kwargs...)
-  solver_results = eval_solver(lbfgs, args...;kwargs...)
-  bmark_results = Dict(i=> b for (i,(b,s)) in solver_results)
-  stats_results = Dict(i => s for (i,(b,s)) in solver_results)
-  times = sum((median(bmark).time/1.0e9) for bmarks ∈ values(bmark_results) for bmark in bmarks)
-  return [times]
+  bmark_results, stats_results = eval_solver(lbfgs, args...;kwargs...)
+  bmark_results = Dict(nlp => (median(bmark).time/1.0e9) for (nlp, bmark) ∈ bmark_results)
+  times = sum(values(bmark_results))
+  return [times], bmark_results, stats_results
 end
 kwargs = Dict{Symbol, Any}(:verbose => false)
 black_box = BlackBox(solver, my_black_box, kwargs)
 
+# define load balancer
+lb = GreedyLoadBalancer(problem_dict)
+
 # define problem suite
 param_optimization_problem =
-  ParameterOptimizationProblem(black_box)
+  ParameterOptimizationProblem(black_box, lb)
 
 # named arguments are options to pass to Nomad
 create_nomad_problem!(
   param_optimization_problem;
   display_all_eval = true,
-  max_time = 180000,
-  max_bb_eval = 2,
+  max_time = 18000,
+  # max_bb_eval = 6,
   display_stats = ["BBE", "EVAL", "SOL", "OBJ"],
 )
 
 # Execute Nomad
 result = solve_with_nomad!(param_optimization_problem)
 println(result)
-println("Best feasible parameters: $(result.x_best_feas)")
+@info ("Best feasible parameters: $(result.x_best_feas)")
 rmprocs(workers())

@@ -58,12 +58,12 @@ end
 function eval_solver(solver_function::F, solver_params::AbstractVector{P}, args...; kwargs...) where {F<:Function, P<:AbstractHyperParameter}
   futures = Dict{Int64, Future}()
   @sync for worker_id in workers()
-    @async futures[worker_id] = @spawnat worker_id let bmark_results=Array{Trial}(undef, length(worker_problems)), stats=Array{AbstractExecutionStats}(undef, length(worker_problems))
+    @async futures[worker_id] = @spawnat worker_id let bmark_results=Dict{AbstractNLPModel, Trial}(), stats=Dict{AbstractNLPModel,AbstractExecutionStats}()
       global worker_problems
-      for (i,nlp) in enumerate(worker_problems)
+      for nlp in worker_problems
         bmark_result, stat = @benchmark_with_result $solver_function($nlp, $solver_params, $args...; $kwargs...) seconds = 10 samples = 5 evals = 1
-        bmark_results[i] = bmark_result
-        stats[i] = stat
+        bmark_results[nlp] = bmark_result
+        stats[nlp] = stat
         finalize(nlp)
       end
       return (bmark_results, stats)
@@ -73,6 +73,8 @@ function eval_solver(solver_function::F, solver_params::AbstractVector{P}, args.
   @sync for worker_id in workers()
     @async solver_results[worker_id] = fetch(futures[worker_id])
   end
-  return solver_results
+  bmark_results = merge([bmark_result for (bmark_result, _) ∈ values(solver_results)]...)
+  stats_results = merge([stats_result for (_, stats_result) ∈ values(solver_results)]...)
+  return bmark_results, stats_results
 end
 
