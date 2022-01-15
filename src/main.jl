@@ -59,13 +59,13 @@ param_optimization_problem =
 create_nomad_problem!(
   param_optimization_problem;
   display_all_eval = true,
-  max_time = 18000,
-  # max_bb_eval = 6,
+  # max_time = 18000,
+  max_bb_eval = 100,
   display_stats = ["BBE", "EVAL", "SOL", "OBJ"],
 )
 
 # Execute Nomad
-result = solve_with_nomad!(param_optimization_problem)
-println(result)
-@info ("Best feasible parameters: $(result.x_best_feas)")
+result = @elapsed solve_with_nomad!(param_optimization_problem)
+@info "time taken to solve: $result"
+# @info ("Best feasible parameters: $(result.x_best_feas)")
 rmprocs(workers())
