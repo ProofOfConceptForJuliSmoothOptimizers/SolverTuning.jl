@@ -73,6 +73,15 @@ function eval_solver(solver_function::F, solver_params::AbstractVector{P}, args.
   @sync for worker_id in workers()
     @async solver_results[worker_id] = fetch(futures[worker_id])
   end
+
+  global workers_data
+  worker_times = Dict(worker_id => 0.0 for worker_id in keys(solver_results))
+  for (worker_id, solver_result) in solver_results
+    bmark_trials, _ = solver_result
+    worker_times[worker_id] = sum(median(trial).time/1.0e9 for trial in values(bmark_trials))
+  end
+  push!(workers_data, worker_times)
+
   bmark_results = merge([bmark_result for (bmark_result, _) ∈ values(solver_results)]...)
   stats_results = merge([stats_result for (_, stats_result) ∈ values(solver_results)]...)
   return bmark_results, stats_results

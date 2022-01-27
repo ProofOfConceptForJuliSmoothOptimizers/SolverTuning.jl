@@ -15,7 +15,7 @@ function GreedyLoadBalancer(problems::Dict{N,T}) where {N <: AbstractNLPModel, T
     return GreedyLoadBalancer(problems, greedy_problem_partition)
 end
 
-function execute(lb::L, bb_iteration::Int; iteration_threshold=5) where L <: AbstractLoadBalancer
+function execute(lb::L, bb_iteration::Int; iteration_threshold=1) where L <: AbstractLoadBalancer
     isempty(values(lb.problems)) && return
     # to make sure we load balance after the first iteration
     (bb_iteration != 0) && ((bb_iteration - 1)  % iteration_threshold != 0) && return
