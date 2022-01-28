@@ -55,9 +55,9 @@ jobs:
       - run: |
           julia --project=docs -e '
             using Documenter: DocMeta, doctest
-            using ParameterOptimization
-            DocMeta.setdocmeta!(ParameterOptimization, :DocTestSetup, :(using ParameterOptimization); recursive=true)
-            doctest(ParameterOptimization)'
+            using SolverTuning
+            DocMeta.setdocmeta!(SolverTuning, :DocTestSetup, :(using SolverTuning); recursive=true)
+            doctest(SolverTuning)'
       - run: julia --project=docs docs/make.jl
         env:
           JULIA_PKG_SERVER: ""

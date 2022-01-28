@@ -1,6 +1,6 @@
-using ParameterOptimization
+using SolverTuning
 using Test
 
-@testset "ParameterOptimization.jl" begin
+@testset "SolverTuning.jl" begin
   # Write your tests here.
 end
