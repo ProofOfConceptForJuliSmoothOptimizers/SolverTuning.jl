@@ -1,3 +1,5 @@
+export AbstractLoadBalancer, GreedyLoadBalancer
+
 abstract type AbstractLoadBalancer{T} end
 
 mutable struct GreedyLoadBalancer{N <: AbstractNLPModel, T<:Real} <: AbstractLoadBalancer{T}
