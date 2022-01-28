@@ -27,24 +27,36 @@ bb_args:
 bb_kwargs:
     The black box's keyword arguments. Can be empty.
 """
-mutable struct BlackBox{S <: AbstractOptSolver, F<:Function, A, K}
+mutable struct BlackBox{S <: AbstractOptSolver, F <: Function, A, K}
   solver::S
   func::F
   args::Vector{A}
   kwargs::Dict{Symbol, K}
 
-  function BlackBox(solver::S, func::F, args::Vector{A}, kwargs::Dict{Symbol, K}) where {S<: AbstractOptSolver, F<:Function, A, K}
+  function BlackBox(
+    solver::S,
+    func::F,
+    args::Vector{A},
+    kwargs::Dict{Symbol, K},
+  ) where {S <: AbstractOptSolver, F <: Function, A, K}
     !isempty(args) || error("args must at least contain the solver parameters.")
-    new{S,F,A,K}(solver, func, args, kwargs)
+    new{S, F, A, K}(solver, func, args, kwargs)
   end
 end
 
-function BlackBox(solver::S, func::F, kwargs::Dict{Symbol, K}) where {S<: AbstractOptSolver, F<:Function, K}
+function BlackBox(
+  solver::S,
+  func::F,
+  kwargs::Dict{Symbol, K},
+) where {S <: AbstractOptSolver, F <: Function, K}
   args = [solver.parameters]
   return BlackBox(solver, func, args, kwargs)
 end
 
-function run_black_box(black_box::BlackBox{S,F,A,K}, new_param_values::AbstractVector{Float64}) where {S<: AbstractOptSolver,F<:Function,A,K}
+function run_black_box(
+  black_box::BlackBox{S, F, A, K},
+  new_param_values::AbstractVector{Float64},
+) where {S <: AbstractOptSolver, F <: Function, A, K}
   bb_func = black_box.func
   solver_params = black_box.solver.parameters
   args = black_box.args
@@ -57,19 +69,29 @@ function run_black_box(black_box::BlackBox{S,F,A,K}, new_param_values::AbstractV
   return bb_func(args...; kwargs...)
 end
 
-function eval_solver(solver_function::F, solver_params::AbstractVector{P}, args...; kwargs...) where {F<:Function, P<:AbstractHyperParameter}
+function eval_solver(
+  solver_function::F,
+  solver_params::AbstractVector{P},
+  args...;
+  kwargs...,
+) where {F <: Function, P <: AbstractHyperParameter}
   futures = Dict{Int64, Future}()
   @sync for worker_id in workers()
-    @async futures[worker_id] = @spawnat worker_id let bmark_results=Dict{AbstractNLPModel, Trial}(), stats=Dict{AbstractNLPModel,AbstractExecutionStats}()
-      global worker_problems
-      for nlp in worker_problems
-        bmark_result, stat = @benchmark_with_result $solver_function($nlp, $solver_params, $args...; $kwargs...) seconds = 10 samples = 5 evals = 1
-        bmark_results[nlp] = bmark_result
-        stats[nlp] = stat
-        finalize(nlp)
+    @async futures[worker_id] =
+      @spawnat worker_id let bmark_results = Dict{AbstractNLPModel, Trial}(),
+        stats = Dict{AbstractNLPModel, AbstractExecutionStats}()
+
+        global worker_problems
+        for nlp in worker_problems
+          bmark_result, stat =
+            @benchmark_with_result $solver_function($nlp, $solver_params, $args...; $kwargs...) seconds =
+              10 samples = 5 evals = 1
+          bmark_results[nlp] = bmark_result
+          stats[nlp] = stat
+          finalize(nlp)
+        end
+        return (bmark_results, stats)
       end
-      return (bmark_results, stats)
-    end
   end
   solver_results = Dict{Int, Tuple}()
   @sync for worker_id in workers()
@@ -80,4 +102,3 @@ function eval_solver(solver_function::F, solver_params::AbstractVector{P}, args.
   stats_results = merge([stats_result for (_, stats_result) ∈ values(solver_results)]...)
   return bmark_results, stats_results
 end
-
