@@ -1,12 +1,7 @@
 using SolverTuning
 using Documenter
 
-DocMeta.setdocmeta!(
-  SolverTuning,
-  :DocTestSetup,
-  :(using SolverTuning);
-  recursive = true,
-)
+DocMeta.setdocmeta!(SolverTuning, :DocTestSetup, :(using SolverTuning); recursive = true)
 
 makedocs(;
   modules = [SolverTuning],
