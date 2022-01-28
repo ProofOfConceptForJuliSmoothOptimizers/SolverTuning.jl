@@ -1,4 +1,4 @@
-module ParameterOptimization
+module SolverTuning
 
 # Write your package code here.
 

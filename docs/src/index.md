@@ -1,7 +1,7 @@
 ```@meta
-CurrentModule = ParameterOptimization
+CurrentModule = SolverTuning
 ```
 
-# ParameterOptimization
+# SolverTuning
 
-Documentation for [ParameterOptimization](https://github.com/JuliaSmoothOptimizers/ParameterOptimization.jl).
+Documentation for [SolverTuning](https://github.com/JuliaSmoothOptimizers/SolverTuning.jl).
