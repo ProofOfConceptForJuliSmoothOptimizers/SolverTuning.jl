@@ -5,7 +5,8 @@ const QSUB_FLAGS = `-q hs22 -V`
 const EXE_FLAGS = "--project=."
 const WORKING_DIRECTORY = joinpath(ENV["HOME"], "julia_worker_logs")
 
-function setup_workers(nb_tries::Int;
+function setup_workers(
+  nb_tries::Int;
   nb_nodes = MAX_NUMBER_SGE_NODES,
   qsubflags = QSUB_FLAGS,
   exec_flags = EXE_FLAGS,
@@ -13,7 +14,10 @@ function setup_workers(nb_tries::Int;
 )
   @assert nb_tries ≥ 1 "Number of tries must be ≥ 1"
   @assert nb_nodes ≤ MAX_NUMBER_SGE_NODES "Number of nodes requested exceeds $MAX_NUMBER_SGE_NODES"
-  let task = Task(() -> addprocs_sge(nb_nodes; qsub_flags = qsubflags, exeflags = exec_flags, wd = working_dir))
+  let task = Task(
+      () ->
+        addprocs_sge(nb_nodes; qsub_flags = qsubflags, exeflags = exec_flags, wd = working_dir),
+    )
     @info "Starting workers on SGE: 1"
     for i = 1:nb_tries
       try
@@ -37,13 +41,13 @@ end
 
 function init_workers(nb_retries = 5; kwargs...)
   try
-    setup_workers(nb_retries;kwargs...)
+    setup_workers(nb_retries; kwargs...)
     # using essential modules in all workers:
     using_modules_quote = quote
       using Pkg, Distributed
       using NLPModels
     end
-    
+
     @everywhere eval(using_modules_quote)
 
     #TODO: dispatch modules found in current environment:
