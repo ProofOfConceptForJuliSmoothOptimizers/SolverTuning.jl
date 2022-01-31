@@ -18,6 +18,7 @@ SolverParameters = "adf32eb0-fe7e-47bb-93e4-fe96e72f6839"
 
 [compat]
 NLPModels = "0.18"
+SolverCore = "0.2"
 julia = "1.6"
 
 [extras]
