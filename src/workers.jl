@@ -18,7 +18,7 @@ function setup_workers(
       () ->
         addprocs_sge(nb_nodes; qsub_flags = qsubflags, exeflags = exec_flags, wd = working_dir),
     )
-    @info "Starting workers on SGE: 1"
+    @info "Starting workers on SGE: try #1"
     for i = 1:nb_tries
       try
         schedule(task)
@@ -26,6 +26,7 @@ function setup_workers(
         break
       catch exception
         @warn "Worker initialization failed on try #$i. $(nb_tries-i) tries left."
+        sleep(30)
       end
     end
     istaskfailed(task) && throw("Couldn't spawn workers on cluster.")
@@ -39,6 +40,17 @@ function dispatch_modules()
   end
 end
 
+function clear_worker_problems()
+  global worker_problems
+  worker_problems = Vector{AbstractNLPModel}()
+  return worker_problems
+end
+
+function push_worker_problems(problems::Vector{P}) where {P <: AbstractNLPModel}
+  global worker_problems
+  push!(worker_problems, problems...)
+end
+
 function init_workers(nb_retries = 5; kwargs...)
   try
     setup_workers(nb_retries; kwargs...)
@@ -46,36 +58,36 @@ function init_workers(nb_retries = 5; kwargs...)
     using_modules_quote = quote
       using Pkg, Distributed
       using NLPModels
+      using BenchmarkTools
+      using SolverCore
+      using SolverParameters
+      using SolverTuning:AbstractOptSolver
+      using BenchmarkTools: Trial
+      import BenchmarkTools.hasevals
+      import BenchmarkTools.prunekwargs
+      import BenchmarkTools.Benchmark
+      import BenchmarkTools.Parameters
+      import BenchmarkTools.run_result
     end
 
-    @everywhere eval(using_modules_quote)
-
-    #TODO: dispatch modules found in current environment:
+    @everywhere eval($using_modules_quote)
 
     # Define function to instantiate problems on workers: 
     dispatch_worker_quote = quote
       worker_problems = Vector{AbstractNLPModel}()
     end
-    @everywhere workers() eval(dispatch_worker_quote)
-
-    @everywhere function push_worker_problems(problems::Vector{P}) where {P <: AbstractNLPModel}
-      global worker_problems
-      push!(worker_problems, problems...)
-    end
-
-    @everywhere function clear_worker_problems()
-      global worker_problems
-      worker_problems = Vector{AbstractNLPModel}()
-      return worker_problems
-    end
+    @everywhere workers() eval($dispatch_worker_quote)
+    @everywhere eval($push_worker_problems)
+    @everywhere eval($clear_worker_problems)
   catch worker_exception
     if isa(worker_exception, CompositeException)
-      @warn "This is a CompositeException"
+      @error "This is a CompositeException"
       broadcast(e -> showerror(stdout, e), worker_exception.exceptions)
     else
-      showerror(stdout, e)
+      showerror(stdout, worker_exception)
     end
     @info "Killing workers..."
     rmprocs(workers())
+    exit(1)
   end
 end
