@@ -12,13 +12,17 @@ using NOMAD
 using NOMAD: NomadOptions
 
 # Specific imports.
-using ClusterManagers, BenchmarkTools
+using ClusterManagers
+using BenchmarkTools
 using BenchmarkTools: Trial
 import BenchmarkTools.hasevals
 import BenchmarkTools.prunekwargs
 import BenchmarkTools.Benchmark
 import BenchmarkTools.Parameters
 import BenchmarkTools.run_result
+
+# global vector containing problems for nomad.
+worker_problems = Vector{AbstractNLPModel}()
 
 # include module components.
 include("workers.jl")
