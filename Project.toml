@@ -20,6 +20,7 @@ SolverParameters = "adf32eb0-fe7e-47bb-93e4-fe96e72f6839"
 NLPModels = "0.18"
 SolverCore = "0.2"
 BenchmarkTools = "1"
+ClusterManagers = "0.4"
 julia = "1.6"
 
 [extras]
