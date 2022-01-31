@@ -22,6 +22,7 @@ SolverCore = "0.2"
 BenchmarkTools = "1"
 ClusterManagers = "0.4"
 JSOSolvers = "0.7"
+NOMAD = "2"
 julia = "1.6"
 
 [extras]
