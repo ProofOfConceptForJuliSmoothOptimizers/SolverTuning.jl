@@ -10,7 +10,6 @@ mutable struct ParameterOptimizationProblem{B <: BlackBox, L <: AbstractLoadBala
   nb_eval::Int
 end
 
-# TODO: Add Parametric type to solver (e.g Abstract Solver)
 function ParameterOptimizationProblem(
   black_box::B,
   load_balancer::L,
@@ -27,7 +26,7 @@ function create_nomad_problem!(
     eval_fct(v, problem)
   end
 
-  solver_params = param_opt_problem.black_box.solver.parameters
+  solver_params = param_opt_problem.black_box.solver_params
   nomad = NomadProblem(
     length(solver_params),
     1,
@@ -59,7 +58,7 @@ function eval_fct(
     count_eval = true
     param_opt_problem.nb_eval += 1
   catch exception
-    println("exception occured while solving")
+    @error "Exception occured while solving"
     showerror(stdout, exception)
     if isa(exception, CompositeException)
       showerror(stdout, exception.exceptions[1])
@@ -93,5 +92,5 @@ function solve_with_nomad!(
   problem::ParameterOptimizationProblem{B, L},
 ) where {B <: BlackBox, L <: AbstractLoadBalancer}
   check_problem(problem)
-  solve(problem.nomad, current_param_values(problem.black_box.solver.parameters))
+  solve(problem.nomad, current_param_values(problem.black_box.solver_params))
 end

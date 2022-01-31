@@ -1,4 +1,4 @@
-export BlackBox
+export BlackBox, eval_solver
 
 """
 Black Box Object that will contain all the necessary info to execute the function with NOMAD:
@@ -27,38 +27,41 @@ bb_args:
 bb_kwargs:
     The black box's keyword arguments. Can be empty.
 """
-mutable struct BlackBox{S <: AbstractOptSolver, F <: Function, A, K}
+mutable struct BlackBox{S <: AbstractOptSolver, P <: AbstractHyperParameter, F <: Function, A, K}
   solver::S
+  solver_params::Vector{P}
   func::F
   args::Vector{A}
   kwargs::Dict{Symbol, K}
 
   function BlackBox(
     solver::S,
+    solver_params::Vector{P},
     func::F,
     args::Vector{A},
     kwargs::Dict{Symbol, K},
-  ) where {S <: AbstractOptSolver, F <: Function, A, K}
-    !isempty(args) || error("args must at least contain the solver parameters.")
-    new{S, F, A, K}(solver, func, args, kwargs)
+  ) where {S <: AbstractOptSolver, P <: AbstractHyperParameter, F <: Function, A, K}
+    pushfirst!(args, solver_params)
+    new{S, P, F, A, K}(solver, solver_params, func, args, kwargs)
   end
 end
 
 function BlackBox(
   solver::S,
+  solver_params::Vector{P},
   func::F,
   kwargs::Dict{Symbol, K},
-) where {S <: AbstractOptSolver, F <: Function, K}
-  args = [solver.parameters]
-  return BlackBox(solver, func, args, kwargs)
+) where {S <: AbstractOptSolver, P <: AbstractHyperParameter, F <: Function, K}
+  args = []
+  return BlackBox(solver, solver_params, func, args, kwargs)
 end
 
 function run_black_box(
-  black_box::BlackBox{S, F, A, K},
+  black_box::BlackBox{S, P, F, A, K},
   new_param_values::AbstractVector{Float64},
-) where {S <: AbstractOptSolver, F <: Function, A, K}
+) where {S <: AbstractOptSolver, P <: AbstractHyperParameter, F <: Function, A, K}
   bb_func = black_box.func
-  solver_params = black_box.solver.parameters
+  solver_params = black_box.solver_params
   args = black_box.args
   kwargs = black_box.kwargs
   [
