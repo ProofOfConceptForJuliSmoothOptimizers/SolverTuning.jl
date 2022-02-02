@@ -103,5 +103,5 @@ function eval_solver(
 
   bmark_results = merge([bmark_result for (bmark_result, _) ∈ values(solver_results)]...)
   stats_results = merge([stats_result for (_, stats_result) ∈ values(solver_results)]...)
-  return bmark_results, stats_results
+  return bmark_results, stats_results, solver_results
 end
