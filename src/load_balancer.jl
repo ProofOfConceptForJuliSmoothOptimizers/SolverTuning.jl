@@ -1,4 +1,4 @@
-export AbstractLoadBalancer, GreedyLoadBalancer
+export AbstractLoadBalancer, GreedyLoadBalancer, RoundRobinLoadBalancer
 
 abstract type AbstractLoadBalancer{T} end
 
@@ -18,6 +18,24 @@ end
 
 function GreedyLoadBalancer(problems::Dict{N, T}) where {N <: AbstractNLPModel, T <: Real}
   return GreedyLoadBalancer(problems, greedy_problem_partition)
+end
+
+mutable struct RoundRobinLoadBalancer{N <: AbstractNLPModel, T <: Real} <: AbstractLoadBalancer{T}
+  problems::Dict{N, T}
+  method::Function
+
+  function RoundRobinLoadBalancer(
+    problems::Dict{N, T},
+    method::Function,
+  ) where {N <: AbstractNLPModel, T <: Real}
+    obj = new{N, T}(problems, method)
+    obj.method = nb_partitions -> (method(obj, nb_partitions))
+    return obj
+  end
+end
+
+function RoundRobinLoadBalancer(problems::Dict{N, T}) where {N <: AbstractNLPModel, T <: Real}
+  return RoundRobinLoadBalancer(problems, round_robin_partition)
 end
 
 function execute(
@@ -58,6 +76,13 @@ function greedy_problem_partition(
     push!(partitions[p_idx], pb)
     penalties[p_idx] += pb_value
   end
+  return partitions
+end
+
+# TODO create new time called RoundRobinLoadBalancer
+function round_robin_partition(lb::L, nb_partitions::Int) where {L <:AbstractLoadBalancer}
+  problems = collect(keys(lb.problems))
+  partitions = [problems[i:nb_partitions:length(problems)] for i ∈ 1:nb_partitions]
   return partitions
 end
 
