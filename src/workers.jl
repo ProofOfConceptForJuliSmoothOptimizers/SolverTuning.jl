@@ -33,9 +33,9 @@ function setup_workers(
   for i = 1:nb_tries
     @info "Starting workers on SGE: try #$i"
     let task = Task(
-      () ->
-        addprocs_sge(nb_nodes; qsub_flags = qsubflags, exeflags = exec_flags, wd = working_dir),
-    )
+        () ->
+          addprocs_sge(nb_nodes; qsub_flags = qsubflags, exeflags = exec_flags, wd = working_dir),
+      )
       try
         schedule(task)
         wait(task)
@@ -58,4 +58,3 @@ function push_worker_problems(problems::Vector{P}) where {P <: AbstractNLPModel}
   global worker_problems
   push!(worker_problems, problems...)
 end
-
