@@ -16,9 +16,11 @@ mutable struct GreedyLoadBalancer{N <: AbstractNLPModel, T <: Real} <: AbstractL
   end
 end
 
-function GreedyLoadBalancer(problems::Dict{N, T}) where {N <: AbstractNLPModel, T <: Real}
-  return GreedyLoadBalancer(problems, greedy_problem_partition)
+function GreedyLoadBalancer(problems)
+  problem_dict = generate_problem_dict(problems)
+  return GreedyLoadBalancer(problem_dict, greedy_problem_partition)
 end
+
 
 mutable struct RoundRobinLoadBalancer{N <: AbstractNLPModel, T <: Real} <: AbstractLoadBalancer{T}
   problems::Dict{N, T}
@@ -34,9 +36,12 @@ mutable struct RoundRobinLoadBalancer{N <: AbstractNLPModel, T <: Real} <: Abstr
   end
 end
 
-function RoundRobinLoadBalancer(problems::Dict{N, T}) where {N <: AbstractNLPModel, T <: Real}
-  return RoundRobinLoadBalancer(problems, round_robin_partition)
+function RoundRobinLoadBalancer(problems)
+  problem_dict = generate_problem_dict(problems)
+  return RoundRobinLoadBalancer(problem_dict, round_robin_partition)
 end
+
+generate_problem_dict(g) = Dict(nlp => 100*rand(Float64) for nlp ∈ g)
 
 function execute(
   lb::L,

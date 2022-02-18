@@ -1,7 +1,7 @@
 module SolverTuning
 
 # stdlib.
-using Pkg, LinearAlgebra, Printf, Distributed
+using Pkg, LinearAlgebra, Printf, Distributed, Random
 
 # JSO packages.
 using NLPModels, SolverCore, SolverParameters
@@ -23,6 +23,8 @@ import BenchmarkTools.run_result
 
 # global vector containing problems for nomad.
 worker_problems = Vector{AbstractNLPModel}()
+# seed for random numbers:
+Random.seed!(2017)
 
 # include module components.
 include("workers.jl")
