@@ -10,7 +10,11 @@ mutable struct ParameterOptimizationProblem{B <: BlackBox, L <: AbstractLoadBala
   nb_eval::Int
 end
 
-function ParameterOptimizationProblem(black_box::B, problems; is_load_balanced=true) where {B <: BlackBox}
+function ParameterOptimizationProblem(
+  black_box::B,
+  problems;
+  is_load_balanced = true,
+) where {B <: BlackBox}
   load_balancer = is_load_balanced ? GreedyLoadBalancer(problems) : RoundRobinLoadBalancer(problems)
   ParameterOptimizationProblem(black_box, load_balancer)
 end
