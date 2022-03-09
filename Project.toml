@@ -13,16 +13,17 @@ NLPModels = "a4795742-8479-5a88-8948-cc11e1c8c1a6"
 NOMAD = "02130f1c-4665-5b79-af82-ff1385104aa0"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SolverCore = "ff4d7338-4cf1-434d-91df-b86cb86fb843"
 SolverParameters = "adf32eb0-fe7e-47bb-93e4-fe96e72f6839"
 
 [compat]
-NLPModels = "0.18"
-SolverCore = "0.2"
 BenchmarkTools = "1"
 ClusterManagers = "0.4"
 JSOSolvers = "0.7"
+NLPModels = "0.18"
 NOMAD = "2"
+SolverCore = "0.2"
 julia = "1.6"
 
 [extras]
