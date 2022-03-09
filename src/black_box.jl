@@ -89,7 +89,7 @@ function eval_solver(
           bmark_result, stat =
             @benchmark_with_result $solver_function($nlp, $solver_params, $args...; $kwargs...) seconds =
               10 samples = 5 evals = 1
-          normalize_times!(bmark_result)          
+          normalize_times!(bmark_result)
           bmark_results[nlp] = bmark_result
           stats[nlp] = stat
           finalize(nlp)
@@ -112,5 +112,5 @@ function normalize_times!(trial::Trial)
 end
 
 function get_cpu_frequency()
-  return first(Sys.cpu_info()).speed/1.0e3
+  return first(Sys.cpu_info()).speed / 1.0e3
 end
