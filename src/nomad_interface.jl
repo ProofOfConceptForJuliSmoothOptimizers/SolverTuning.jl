@@ -7,7 +7,6 @@ mutable struct ParameterOptimizationProblem{B <: BlackBox, L <: AbstractLoadBala
   nomad::Union{Nothing, NomadProblem}
   black_box::B
   load_balancer::L
-  nb_eval::Int
 end
 
 function ParameterOptimizationProblem(black_box::B, problems; is_load_balanced=true) where {B <: BlackBox}
@@ -19,7 +18,7 @@ function ParameterOptimizationProblem(
   black_box::B,
   load_balancer::L,
 ) where {B <: BlackBox, L <: AbstractLoadBalancer}
-  ParameterOptimizationProblem(nothing, black_box, load_balancer, 0)
+  ParameterOptimizationProblem(nothing, black_box, load_balancer)
 end
 
 function create_nomad_problem!(
@@ -55,13 +54,12 @@ function eval_fct(
   success = false
   count_eval = false
   black_box_output = [Inf64]
-  execute(lb, param_opt_problem.nb_eval)
+  execute(lb)
   try
     black_box_output, bmark_results, stats_results = run_optim_problem(param_opt_problem, v)
     update_problems(lb, bmark_results)
     success = true
     count_eval = true
-    param_opt_problem.nb_eval += 1
   catch exception
     @error "Exception occured while solving"
     showerror(stdout, exception)
