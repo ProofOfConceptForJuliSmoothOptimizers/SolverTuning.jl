@@ -50,11 +50,11 @@ end
 
 function clear_worker_problems()
   global worker_problems
-  worker_problems = Vector{AbstractNLPModel}()
+  worker_problems = Vector{Problem}()
   return worker_problems
 end
 
-function push_worker_problems(problems::Vector{P}) where {P <: AbstractNLPModel}
+function push_worker_problems(problems::Vector{Problem})
   global worker_problems
   push!(worker_problems, problems...)
 end

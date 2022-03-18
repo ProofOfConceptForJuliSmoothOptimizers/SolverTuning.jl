@@ -78,20 +78,21 @@ function eval_solver(
   args...;
   kwargs...,
 ) where {F <: Function, P <: AbstractHyperParameter}
-  futures = Dict{Int64, Future}()
+  futures = Dict{Int, Future}()
   @sync for worker_id in workers()
     @async futures[worker_id] =
-      @spawnat worker_id let bmark_results = Dict{AbstractNLPModel, Trial}(),
-        stats = Dict{AbstractNLPModel, AbstractExecutionStats}()
+      @spawnat worker_id let bmark_results = Dict{Int, Trial}(),
+        stats = Dict{Int, AbstractExecutionStats}()
 
         global worker_problems
-        for nlp in worker_problems
+        for pb in worker_problems
+          nlp = pb.nlp
           bmark_result, stat =
             @benchmark_with_result $solver_function($nlp, $solver_params, $args...; $kwargs...) seconds =
               10 samples = 5 evals = 1
           normalize_times!(bmark_result)
-          bmark_results[nlp] = bmark_result
-          stats[nlp] = stat
+          bmark_results[pb.id] = bmark_result
+          stats[pb.id] = stat
           finalize(nlp)
         end
         return (bmark_results, stats)
