@@ -40,6 +40,7 @@ function create_nomad_problem!(
     granularity = granularities(solver_params),
     lower_bound = lower_bounds(solver_params),
     upper_bound = upper_bounds(solver_params),
+    min_mesh_size=[eps(Float32) for i in 1:length(solver_params)]
   )
   set_nomad_options!(nomad.options; kwargs...)
   param_opt_problem.nomad = nomad
