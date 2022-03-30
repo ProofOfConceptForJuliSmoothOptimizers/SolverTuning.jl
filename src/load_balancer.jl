@@ -28,7 +28,7 @@ mutable struct RoundRobinLoadBalancer{T <: Real} <: AbstractLoadBalancer{T}
   method::Function
   iteration::Int
 
-  function GreedyLoadBalancer(
+  function RoundRobinLoadBalancer(
     problems::Dict{Int, Problem{T}},
     method::Function,
     iteration::Int
