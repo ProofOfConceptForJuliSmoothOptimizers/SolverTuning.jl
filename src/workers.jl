@@ -54,7 +54,7 @@ function clear_worker_problems()
   return worker_problems
 end
 
-function push_worker_problems(problems::Vector{Problem})
+function push_worker_problems(problems::Vector{P}) where {P <: Problem}
   global worker_problems
   push!(worker_problems, problems...)
 end
