@@ -86,7 +86,7 @@ function greedy_problem_partition(
 end
 
 function round_robin_partition(lb::L, nb_partitions::Int) where {L <: AbstractLoadBalancer}
-  problems = collect(values(lb.problems))
+  problems = collect(Problem, values(lb.problems))
   partitions = [problems[i:nb_partitions:length(problems)] for i ∈ 1:nb_partitions]
   return partitions
 end
