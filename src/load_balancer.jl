@@ -44,7 +44,7 @@ function RoundRobinLoadBalancer(problems)
   return RoundRobinLoadBalancer(problem_dict, round_robin_partition, 0)
 end
 
-generate_problem_dict(g) = Dict(id => Problem(id, nlp, 100 * rand(Float64))  for (id,nlp) ∈ enumerate(g))
+generate_problem_dict(g) = Dict(id => Problem(id, nlp, eps(Float64))  for (id,nlp) ∈ enumerate(g))
 
 function execute(
   lb::L;
@@ -97,6 +97,6 @@ function update_problems(
 ) where {L <: AbstractLoadBalancer, T <: Real}
   for (pb_id, new_weight) in problem_data
     problem = lb.problems[pb_id]
-    problem.weight = new_weight
+    problem.weight += new_weight
   end
 end
