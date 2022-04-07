@@ -42,6 +42,8 @@ function setup_workers(
         break
       catch exception
         @warn "Worker initialization failed on try #$i. $(nb_tries-i) tries left."
+        rmprocs(workers())
+        @info "trying again"
         sleep(30)
       end
     end
