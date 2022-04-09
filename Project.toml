@@ -20,7 +20,7 @@ SolverParameters = "adf32eb0-fe7e-47bb-93e4-fe96e72f6839"
 [compat]
 BenchmarkTools = "1"
 ClusterManagers = "0.4"
-JSOSolvers = "0.7"
+JSOSolvers = "0.7, 0.8"
 NLPModels = "0.18"
 NOMAD = "2"
 SolverCore = "0.2"
