@@ -4,26 +4,21 @@ authors = ["Monssaf Toukal <tmonssaf@gmail.com>"]
 version = "0.1.0"
 
 [deps]
+BBModels = "adf32eb0-fe7e-47bb-93e4-fe96e72f6839"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 ClusterManagers = "34f1f09b-3a8b-5176-ab39-66d58a4d544e"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
-JSOSolvers = "10dff2fc-5484-5881-a0e0-c90441020f8a"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NLPModels = "a4795742-8479-5a88-8948-cc11e1c8c1a6"
 NOMAD = "02130f1c-4665-5b79-af82-ff1385104aa0"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-SolverCore = "ff4d7338-4cf1-434d-91df-b86cb86fb843"
-SolverParameters = "adf32eb0-fe7e-47bb-93e4-fe96e72f6839"
 
 [compat]
 BenchmarkTools = "1"
 ClusterManagers = "0.4"
-JSOSolvers = "0.7"
 NLPModels = "0.18"
 NOMAD = "2"
-SolverCore = "0.2"
 julia = "1.6"
 
 [extras]

@@ -18,9 +18,8 @@ mutable struct GreedyLoadBalancer{T <: Real} <: AbstractLoadBalancer{T}
   end
 end
 
-function GreedyLoadBalancer(problems)
-  problem_dict = generate_problem_dict(problems)
-  return GreedyLoadBalancer(problem_dict, greedy_problem_partition, 0)
+function GreedyLoadBalancer(problems::Dict{Int, Problem{T}}) where {T <: Real}
+  return GreedyLoadBalancer(problems, greedy_problem_partition, 0)
 end
 
 mutable struct RoundRobinLoadBalancer{T <: Real} <: AbstractLoadBalancer{T}
@@ -39,9 +38,8 @@ mutable struct RoundRobinLoadBalancer{T <: Real} <: AbstractLoadBalancer{T}
   end
 end
 
-function RoundRobinLoadBalancer(problems)
-  problem_dict = generate_problem_dict(problems)
-  return RoundRobinLoadBalancer(problem_dict, round_robin_partition, 0)
+function RoundRobinLoadBalancer(problems::Dict{Int, Problem{T}}) where {T <: Real}
+  return RoundRobinLoadBalancer(problems, round_robin_partition, 0)
 end
 
 generate_problem_dict(g) = Dict(id => Problem(id, nlp, eps(Float64))  for (id,nlp) ∈ enumerate(g))
@@ -90,14 +88,4 @@ function round_robin_partition(lb::RoundRobinLoadBalancer{T}, nb_partitions::Int
   problems = shuffle(problems)
   partitions = [problems[i:nb_partitions:length(problems)] for i ∈ 1:nb_partitions]
   return partitions
-end
-
-function update_problems(
-  lb::L,
-  problem_data::Dict{Int, T},
-) where {L <: AbstractLoadBalancer, T <: Real}
-  for (pb_id, new_weight) in problem_data
-    problem = lb.problems[pb_id]
-    problem.weight += new_weight
-  end
 end
