@@ -4,15 +4,24 @@ export ParameterOptimizationProblem, create_nomad_problem!, solve_with_nomad!
 """
 Struct that defines a problem that will be sent to NOMAD.jl.
 """
-mutable struct ParameterOptimizationProblem{T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
+mutable struct ParameterOptimizationProblem{
+  T,
+  S,
+  B <: AbstractBBModel{T, S},
+  L <: AbstractLoadBalancer,
+}
   nomad::Union{Nothing, NomadProblem}
   nlp::B
   x::S
   load_balancer::L
 end
 
-function ParameterOptimizationProblem(nlp::B; is_load_balanced=true) where {T, S, B <: AbstractBBModel{T, S}}
-  load_balancer = is_load_balanced ? GreedyLoadBalancer(nlp.problems) : RoundRobinLoadBalancer(nlp.problems)
+function ParameterOptimizationProblem(
+  nlp::B;
+  is_load_balanced = true,
+) where {T, S, B <: AbstractBBModel{T, S}}
+  load_balancer =
+    is_load_balanced ? GreedyLoadBalancer(nlp.problems) : RoundRobinLoadBalancer(nlp.problems)
   ParameterOptimizationProblem(nlp, deepcopy(nlp.meta.x0), load_balancer)
 end
 
@@ -35,7 +44,7 @@ function create_nomad_problem!(
 
   solver_params = param_opt_problem.x
   bbmodel = param_opt_problem.nlp
-  output_types = ["EB" for _ in 1:bbmodel.meta.ncon]
+  output_types = ["EB" for _ = 1:(bbmodel.meta.ncon)]
   pushfirst!(output_types, "OBJ")
   nomad = NomadProblem(
     length(solver_params),
@@ -89,9 +98,9 @@ end
 
 function update!(
   param_opt_problem::ParameterOptimizationProblem{T, S, B, L},
-  v::Vector{Float64}
+  v::Vector{Float64},
 ) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
-  for (i,vᵢ) in zip(1:length(param_opt_problem.x), v)
+  for (i, vᵢ) in zip(1:length(param_opt_problem.x), v)
     if nomad_type(param_opt_problem.x[i]) == "B"
       param_opt_problem.x[i] = Bool(round(Int, vᵢ))
     elseif nomad_type(param_opt_problem.x[i]) == "I"
@@ -123,15 +132,13 @@ function solve_with_nomad!(
   solve(problem.nomad, [Float64(xᵢ) for xᵢ in problem.x])
 end
 
-input_types(x::S) where S = [nomad_type(xᵢ) for xᵢ in x]
-
+input_types(x::S) where {S} = [nomad_type(xᵢ) for xᵢ in x]
 
 nomad_type(::T) where {T <: Real} = "R"
 nomad_type(::T) where {T <: Integer} = "I"
 nomad_type(::T) where {T <: Bool} = "B"
 
-
-granularities(x::S) where S = [granularity(xᵢ) for xᵢ in x]
+granularities(x::S) where {S} = [granularity(xᵢ) for xᵢ in x]
 granularity(::T) where {T <: Union{Bool, Int}} = one(Float64)
 granularity(::Float64) = Float64(1.0e-5)
 granularity(::Float32) = Float64(1.0e-4)
@@ -146,4 +153,3 @@ function upper_bounds(nlp::BBModel)
   uvar = nlp.meta.uvar
   return [Float64(u) for u in uvar]
 end
-
