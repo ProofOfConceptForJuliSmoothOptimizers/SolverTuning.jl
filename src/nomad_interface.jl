@@ -13,7 +13,7 @@ end
 
 function ParameterOptimizationProblem(nlp::B; is_load_balanced=true) where {T, S, B <: AbstractBBModel{T, S}}
   load_balancer = is_load_balanced ? GreedyLoadBalancer(nlp.problems) : RoundRobinLoadBalancer(nlp.problems)
-  ParameterOptimizationProblem(nlp, deepcopy(nlp.x0), load_balancer)
+  ParameterOptimizationProblem(nlp, deepcopy(nlp.meta.x0), load_balancer)
 end
 
 function ParameterOptimizationProblem(
@@ -82,6 +82,8 @@ function run_optim_problem(
   v::Vector{Float64},
 ) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
   update!(param_opt_problem, v)
+  @info "new vector: $v"
+  @info "new params: $(param_opt_problem.x)"
   return [run_bb_model(param_opt_problem.nlp, param_opt_problem.x)]
 end
 
@@ -89,14 +91,14 @@ function update!(
   param_opt_problem::ParameterOptimizationProblem{T, S, B, L},
   v::Vector{Float64}
 ) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
-  for (xᵢ,vᵢ) in zip(param_opt_problem.x, v)
-    if nomad_type(xᵢ) == "B"
-      xᵢ = Bool(round(param_type, vᵢ))
-    elseif nomad_type(xᵢ) == "I"
-      xᵢ = round(param_type, vᵢ)
+  for (i,vᵢ) in zip(1:length(param_opt_problem.x), v)
+    if nomad_type(param_opt_problem.x[i]) == "B"
+      param_opt_problem.x[i] = Bool(round(Int, vᵢ))
+    elseif nomad_type(param_opt_problem.x[i]) == "I"
+      param_opt_problem.x[i] = round(Int, vᵢ)
     else
-      param_type = typeof(xᵢ)
-      xᵢ = param_type(vᵢ)
+      param_type = typeof(param_opt_problem.x[i])
+      param_opt_problem.x[i] = param_type(vᵢ)
     end
   end
 end
@@ -111,22 +113,22 @@ end
 function check_problem(
   p::ParameterOptimizationProblem{T, S, B, L},
 ) where {T, S, B <: AbstractBBModel, L <: AbstractLoadBalancer}
-  @assert !isnothing(p.black_box) "error: Black Box not defined"
+  @assert !isnothing(p.nlp) "error: Black Box not defined"
 end
 
 function solve_with_nomad!(
   problem::ParameterOptimizationProblem{T, S, B, L},
 ) where {T, S, B <: AbstractBBModel, L <: AbstractLoadBalancer}
   check_problem(problem)
-  solve(problem.nomad, current_param_values(problem.black_box.solver_params))
+  solve(problem.nomad, [Float64(xᵢ) for xᵢ in problem.x])
 end
 
 input_types(x::S) where S = [nomad_type(xᵢ) for xᵢ in x]
 
 
-nomad_type(::Type{T}) where {T <: Real} = "R"
-nomad_type(::Type{T}) where {T <: Integer} = "I"
-nomad_type(::Type{T}) where {T <: Bool} = "B"
+nomad_type(::T) where {T <: Real} = "R"
+nomad_type(::T) where {T <: Integer} = "I"
+nomad_type(::T) where {T <: Bool} = "B"
 
 
 granularities(x::S) where S = [granularity(xᵢ) for xᵢ in x]
