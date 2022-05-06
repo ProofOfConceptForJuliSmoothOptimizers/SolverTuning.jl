@@ -10,7 +10,7 @@ mutable struct GreedyLoadBalancer{T <: Real} <: AbstractLoadBalancer{T}
   function GreedyLoadBalancer(
     problems::Dict{Int, Problem{T}},
     method::Function,
-    iteration::Int
+    iteration::Int,
   ) where {T <: Real}
     obj = new{T}(problems, method, iteration)
     obj.method = nb_partitions -> (method(obj, nb_partitions))
@@ -30,7 +30,7 @@ mutable struct RoundRobinLoadBalancer{T <: Real} <: AbstractLoadBalancer{T}
   function RoundRobinLoadBalancer(
     problems::Dict{Int, Problem{T}},
     method::Function,
-    iteration::Int
+    iteration::Int,
   ) where {T <: Real}
     obj = new{T}(problems, method, iteration)
     obj.method = nb_partitions -> (method(obj, nb_partitions))
@@ -42,12 +42,9 @@ function RoundRobinLoadBalancer(problems::Dict{Int, Problem{T}}) where {T <: Rea
   return RoundRobinLoadBalancer(problems, round_robin_partition, 0)
 end
 
-generate_problem_dict(g) = Dict(id => Problem(id, nlp, eps(Float64))  for (id,nlp) ∈ enumerate(g))
+generate_problem_dict(g) = Dict(id => Problem(id, nlp, eps(Float64)) for (id, nlp) ∈ enumerate(g))
 
-function execute(
-  lb::L;
-  iteration_threshold = 1,
-) where {L <: AbstractLoadBalancer}
+function execute(lb::L; iteration_threshold = 1) where {L <: AbstractLoadBalancer}
   isempty(values(lb.problems)) && return
   bb_iteration = lb.iteration
   # to make sure we load balance after the first iteration
@@ -67,10 +64,7 @@ function execute(
   lb.iteration += 1
 end
 
-function greedy_problem_partition(
-  lb::GreedyLoadBalancer{T},
-  nb_partitions::Int,
-) where {T <: Real}
+function greedy_problem_partition(lb::GreedyLoadBalancer{T}, nb_partitions::Int) where {T <: Real}
   partitions = [Vector{Problem}() for _ ∈ 1:nb_partitions]
   problems = sort(collect(values(lb.problems)); by = p -> p.weight, rev = true)
   σ = sum(problem.weight for problem ∈ problems) / nb_partitions

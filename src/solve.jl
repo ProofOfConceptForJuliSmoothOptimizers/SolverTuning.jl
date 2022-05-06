@@ -1,14 +1,13 @@
 export solve, solve_with_nomad
 
-
 function solve_with_nomad!(
-    problem::ParameterOptimizationProblem{T, S, B, L},
-  ) where {T, S, B <: AbstractBBModel, L <: AbstractLoadBalancer}
-    check_problem(problem)
-    return solve(problem.nomad, [Float64(xᵢ) for xᵢ in problem.x])
+  problem::ParameterOptimizationProblem{T, S, B, L},
+) where {T, S, B <: AbstractBBModel, L <: AbstractLoadBalancer}
+  check_problem(problem)
+  return solve(problem.nomad, [Float64(xᵢ) for xᵢ in problem.x])
 end
 
-function solve_with_nomad(bbmodel::AbstractBBModel;kwargs...)
+function solve_with_nomad(bbmodel::AbstractBBModel; kwargs...)
   param_optimization_problem = ParameterOptimizationProblem(bbmodel)
   let result = nothing
     try
