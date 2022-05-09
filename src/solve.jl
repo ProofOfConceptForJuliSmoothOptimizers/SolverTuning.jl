@@ -9,7 +9,7 @@ end
 
 function solve_with_nomad(bbmodel::AbstractBBModel; kwargs...)
   param_optimization_problem = ParameterOptimizationProblem(bbmodel)
-  let result = nothing, best_params=nothing
+  let result = nothing, best_params = nothing
     try
 
       # named arguments are options to pass to Nomad
@@ -20,7 +20,8 @@ function solve_with_nomad(bbmodel::AbstractBBModel; kwargs...)
       @info "Best feasible parameters: $best_params"
     catch e
       @error "Error occured while running NOMAD: $e"
-      best_params = (; zip(param_optimization_problem.nlp.meta.x_n, param_optimization_problem.x)...)
+      best_params =
+        (; zip(param_optimization_problem.nlp.meta.x_n, param_optimization_problem.x)...)
     finally
       rmprocs(workers())
       return best_params
