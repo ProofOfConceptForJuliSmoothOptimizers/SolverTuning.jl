@@ -13,6 +13,7 @@ mutable struct ParameterOptimizationProblem{
   nomad::Union{Nothing, NomadProblem}
   nlp::B
   x::S
+  c::Vector{Float64}
   load_balancer::L
 end
 
@@ -22,15 +23,18 @@ function ParameterOptimizationProblem(
 ) where {T, S, B <: AbstractBBModel{T, S}}
   load_balancer =
     is_load_balanced ? GreedyLoadBalancer(nlp.problems) : RoundRobinLoadBalancer(nlp.problems)
-  ParameterOptimizationProblem(nlp, deepcopy(nlp.meta.x0), load_balancer)
+  obj = ParameterOptimizationProblem(nlp, deepcopy(nlp.meta.x0), Vector{Float64}(), load_balancer)
+  obj.c = format_constraints(obj)
+  return obj
 end
 
 function ParameterOptimizationProblem(
   nlp::B,
   x::S,
+  c::Vector{Float64},
   load_balancer::L,
 ) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
-  ParameterOptimizationProblem(nothing, nlp, x, load_balancer)
+  ParameterOptimizationProblem(nothing, nlp, x, c, load_balancer)
 end
 
 function create_nomad_problem!(
@@ -44,7 +48,8 @@ function create_nomad_problem!(
 
   solver_params = param_opt_problem.x
   bbmodel = param_opt_problem.nlp
-  output_types = ["EB" for _ = 1:(bbmodel.meta.ncon)]
+  ncon = length(param_opt_problem.c)
+  output_types = ["EB" for _ = 1:ncon]
   pushfirst!(output_types, "OBJ")
   nomad = NomadProblem(
     length(solver_params),
@@ -60,15 +65,18 @@ function create_nomad_problem!(
   param_opt_problem.nomad = nomad
 end
 
-# define eval function here: 
+# define eval function here:
 function eval_fct(
   v::Vector{Float64},
   param_opt_problem::ParameterOptimizationProblem{T, S, B, L},
 ) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
   lb = param_opt_problem.load_balancer
+  n_con = length(param_opt_problem.c)
   success = false
   count_eval = false
   black_box_output = [Inf64]
+
+  push!(black_box_output, [0.0 for _ in 1:n_con]...)
   execute(lb)
   try
     black_box_output = run_optim_problem(param_opt_problem, v)
@@ -91,9 +99,11 @@ function run_optim_problem(
   v::Vector{Float64},
 ) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
   update!(param_opt_problem, v)
+  c = format_constraints(param_opt_problem)
   @info "new vector: $v"
   @info "new params: $(param_opt_problem.x)"
-  return [run_bb_model(param_opt_problem.nlp, param_opt_problem.x)]
+  @info "constraints values: $c"
+  return [run_bb_model(param_opt_problem.nlp, param_opt_problem.x), c...]
 end
 
 function update!(
@@ -140,8 +150,8 @@ nomad_type(::T) where {T <: Bool} = "B"
 
 granularities(x::S) where {S} = [granularity(xᵢ) for xᵢ in x]
 granularity(::T) where {T <: Union{Bool, Int}} = one(Float64)
-granularity(::Float64) = Float64(1.0e-5)
-granularity(::Float32) = Float64(1.0e-4)
+granularity(::Float64) = Float64(0.0)
+granularity(::Float32) = Float64(eps(Float32))
 granularity(::Float16) = Float64(1.0e-3)
 
 function lower_bounds(nlp::BBModel)
