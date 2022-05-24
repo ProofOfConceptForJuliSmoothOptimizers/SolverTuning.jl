@@ -76,7 +76,7 @@ function eval_fct(
   count_eval = false
   black_box_output = [Inf64]
 
-  push!(black_box_output, [0.0 for _ in 1:n_con]...)
+  push!(black_box_output, [0.0 for _ = 1:n_con]...)
   execute(lb)
   try
     black_box_output = run_optim_problem(param_opt_problem, v)
