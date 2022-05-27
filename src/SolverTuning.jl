@@ -1,7 +1,7 @@
 module SolverTuning
 
 # stdlib.
-using Pkg, LinearAlgebra, Distributed, Random
+using Pkg, LinearAlgebra, Distributed, Random, Statistics
 
 # JSO packages.
 using BBModels, NLPModels
