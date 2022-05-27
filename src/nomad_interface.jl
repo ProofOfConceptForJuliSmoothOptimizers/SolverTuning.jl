@@ -15,14 +15,20 @@ mutable struct ParameterOptimizationProblem{
   x::S
   c::Vector{Float64}
   load_balancer::L
+  worker_data::Dict{Int,Vector{Vector{ProblemMetrics}}}
 end
 
 function ParameterOptimizationProblem(
   nlp::B;
-  is_load_balanced = true,
+  lb_choice::Symbol = :C,
 ) where {T, S, B <: AbstractBBModel{T, S}}
-  load_balancer =
-    is_load_balanced ? GreedyLoadBalancer(nlp.problems) : RoundRobinLoadBalancer(nlp.problems)
+  load_balancer = CombineLoadBalancer(nlp.problems)
+  if lb_choice == :G
+    load_balancer = GreedyLoadBalancer(nlp.problems)
+  elseif lb_choice == :R
+    load_balancer = RoundRobinLoadBalancer(nlp.problems)
+  end
+  lb_choice ∈ (:G, :R, :C) || @warn "this load balancer option does not exist. Choosing the Combine algorithm."
   obj = ParameterOptimizationProblem(nlp, deepcopy(nlp.meta.x0), Vector{Float64}(), load_balancer)
   obj.c = format_constraints(obj)
   return obj
@@ -34,7 +40,10 @@ function ParameterOptimizationProblem(
   c::Vector{Float64},
   load_balancer::L,
 ) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
-  ParameterOptimizationProblem(nothing, nlp, x, c, load_balancer)
+  worker_data = Dict{Int, Vector{Vector{ProblemMetrics}}}(
+    i => Vector{Vector{ProblemMetrics}}() for i in workers()
+  )
+  ParameterOptimizationProblem(nothing, nlp, x, c, load_balancer, worker_data)
 end
 
 function create_nomad_problem!(
@@ -75,7 +84,6 @@ function eval_fct(
   success = false
   count_eval = false
   black_box_output = [Inf64]
-
   push!(black_box_output, [0.0 for _ in 1:n_con]...)
   execute(lb)
   try
@@ -100,10 +108,12 @@ function run_optim_problem(
 ) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
   update!(param_opt_problem, v)
   c = format_constraints(param_opt_problem)
-  @info "new vector: $v"
   @info "new params: $(param_opt_problem.x)"
-  @info "constraints values: $c"
-  return [run_bb_model(param_opt_problem.nlp, param_opt_problem.x), c...]
+  # @info "constraints values: $c"
+  bb_output, new_worker_data = run_bb_model(param_opt_problem.nlp, param_opt_problem.x)
+  update_worker_data!(param_opt_problem.worker_data, new_worker_data)
+  update_lb!(param_opt_problem)
+  return [bb_output, c...]
 end
 
 function update!(
@@ -119,6 +129,25 @@ function update!(
       param_type = typeof(param_opt_problem.x[i])
       param_opt_problem.x[i] = param_type(vᵢ)
     end
+  end
+end
+
+function update_lb!(param_opt_problem::ParameterOptimizationProblem{T, S, B, L}
+  ) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
+  worker_data = param_opt_problem.worker_data
+  lb = param_opt_problem.load_balancer
+  for (_, bb_iterations) in worker_data
+    last_iteration = last(bb_iterations)
+    for p_metric in last_iteration
+      new_time = median(get_times(p_metric))
+      lb.problems[get_pb_id(p_metric)].weight += new_time
+    end
+  end
+end
+
+function update_worker_data!(data::Dict{Int,Vector{Vector{ProblemMetrics}}}, new_data::Dict{Int, Vector{ProblemMetrics}})
+  for w_id in workers()
+    push!(data[w_id], new_data[w_id])
   end
 end
 
