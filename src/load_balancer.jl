@@ -1,64 +1,64 @@
 export AbstractLoadBalancer, GreedyLoadBalancer, RoundRobinLoadBalancer
 
-abstract type AbstractLoadBalancer{T} end
+abstract type AbstractLoadBalancer end
 
-mutable struct GreedyLoadBalancer{T <: Real} <: AbstractLoadBalancer{T}
-  problems::Dict{Int, Problem{T}}
+mutable struct GreedyLoadBalancer <: AbstractLoadBalancer
+  problems::Dict{Int, Problem}
   method::Function
   iteration::Int
 
   function GreedyLoadBalancer(
-    problems::Dict{Int, Problem{T}},
+    problems::Dict{Int, Problem},
     method::Function,
     iteration::Int,
-  ) where {T <: Real}
-    obj = new{T}(problems, method, iteration)
+  )
+    obj = new(problems, method, iteration)
     obj.method = nb_partitions -> (method(obj, nb_partitions))
     return obj
   end
 end
 
-function GreedyLoadBalancer(problems::Dict{Int, Problem{T}}) where {T <: Real}
+function GreedyLoadBalancer(problems::Dict{Int, Problem})
   return GreedyLoadBalancer(problems, LPT, 0)
 end
 
-mutable struct RoundRobinLoadBalancer{T <: Real} <: AbstractLoadBalancer{T}
-  problems::Dict{Int, Problem{T}}
+mutable struct RoundRobinLoadBalancer <: AbstractLoadBalancer
+  problems::Dict{Int, Problem}
   method::Function
   iteration::Int
 
   function RoundRobinLoadBalancer(
-    problems::Dict{Int, Problem{T}},
+    problems::Dict{Int, Problem},
     method::Function,
     iteration::Int,
-  ) where {T <: Real}
-    obj = new{T}(problems, method, iteration)
+  )
+    obj = new(problems, method, iteration)
     obj.method = nb_partitions -> (method(obj, nb_partitions))
     return obj
   end
 end
 
-function RoundRobinLoadBalancer(problems::Dict{Int, Problem{T}}) where {T <: Real}
+function RoundRobinLoadBalancer(problems::Dict{Int, Problem})
   return RoundRobinLoadBalancer(problems, round_robin_partition, 0)
 end
 
-mutable struct CombineLoadBalancer{T <: Real} <: AbstractLoadBalancer{T}
-  problems::Dict{Int, Problem{T}}
+mutable struct CombineLoadBalancer <: AbstractLoadBalancer
+  problems::Dict{Int, Problem}
   method::Function
   iteration::Int
 
   function CombineLoadBalancer(
-    problems::Dict{Int, Problem{T}},
+    problems::Dict{Int, Problem},
     method::Function,
     iteration::Int,
-  ) where {T <: Real}
-    obj = new{T}(problems, method, iteration)
+  )
+    obj = new(problems, method, iteration)
     obj.method = nb_partitions -> (method(obj, nb_partitions))
     return obj
   end
 end
 
-function CombineLoadBalancer(problems::Dict{Int, Problem{T}}) where {T <: Real}
+function CombineLoadBalancer(problems::Dict{Int, Problem})
   return CombineLoadBalancer(problems, COMBINE, 0)
 end
 
@@ -81,7 +81,7 @@ function execute(lb::L; iteration_threshold = 1) where {L <: AbstractLoadBalance
   lb.iteration += 1
 end
 
-function LPT(lb::L, nb_partitions::Int) where {T <: Real, L <: Union{GreedyLoadBalancer{T},CombineLoadBalancer{T}}}
+function LPT(lb::L, nb_partitions::Int) where {L <: Union{GreedyLoadBalancer,CombineLoadBalancer}}
   partitions = [Vector{Problem}() for _ ∈ 1:nb_partitions]
   problems = sort(collect(values(lb.problems)); by = p -> p.weight, rev = true)
   σ = sum(problem.weight for problem ∈ problems) / nb_partitions
@@ -94,14 +94,14 @@ function LPT(lb::L, nb_partitions::Int) where {T <: Real, L <: Union{GreedyLoadB
   return partitions, true
 end
 
-function round_robin_partition(lb::RoundRobinLoadBalancer{T}, nb_partitions::Int) where {T <: Real}
+function round_robin_partition(lb::RoundRobinLoadBalancer, nb_partitions::Int)
   problems = collect(Problem, values(lb.problems))
   problems = shuffle(problems)
   partitions = [problems[i:nb_partitions:length(problems)] for i ∈ 1:nb_partitions]
   return partitions, true
 end
 
-function first_fit(v::Vector{Problem{T}}, max_capacity::S, nb_bin::Int) where {T <: Real, S <: Real}
+function first_fit(v::Vector{Problem}, max_capacity::S, nb_bin::Int) where S <: Real
   nb_bin > 0 || error("cannot have a negative number of partitions")
   partitions = [Vector{Problem{T}}() for _ in 1:nb_bin]
   capacities = [zero(S) for _ in 1:nb_bin]
@@ -118,12 +118,12 @@ function first_fit(v::Vector{Problem{T}}, max_capacity::S, nb_bin::Int) where {T
   return partitions, status
 end
 
-function FFD(v::Vector{Problem{T}}, max_capacity::S, nb_bin::Int) where {T <: Real, S <: Real}
+function FFD(v::Vector{Problem}, max_capacity::S, nb_bin::Int) where {S <: Real}
 sorted_v = sort(v; by = p -> p.weight, rev = true)
 return first_fit(sorted_v, max_capacity, nb_bin)
 end
 
-function multifit(problems::Vector{Problem{T}}, nb_bin::Int; L::S= max(sum(p.weight for p in problems)/nb_bin, max([p.weight for p in problems]...)), U::V= max(2*sum(problems)/nb_bin, max([p.weight for p in problems]...)), nm_itmax::Int=6, atol::Float64=0.005) where {T <: Real, S <: Real, V <: Real}
+function multifit(problems::Vector{Problem}, nb_bin::Int; L::S= max(sum(p.weight for p in problems)/nb_bin, max([p.weight for p in problems]...)), U::V= max(2*sum(problems)/nb_bin, max([p.weight for p in problems]...)), nm_itmax::Int=6, atol::Float64=0.005) where {S <: Real, V <: Real}
   nb_bin > 0 || error("nb of partitions must be greater than 0.")
   partitions = nothing
   σ = sum(problem.weight for problem ∈ problems) / nb_bin
@@ -138,7 +138,7 @@ function multifit(problems::Vector{Problem{T}}, nb_bin::Int; L::S= max(sum(p.wei
   return partitions, status
 end
 
-function COMBINE(lb::CombineLoadBalancer{T}, nb_partitions::Int; atol::Float64=0.0005) where T <: Real
+function COMBINE(lb::CombineLoadBalancer, nb_partitions::Int; atol::Float64=0.0005)
   nb_partitions > 0 || error("nb of partitions must be greater than 0.")
   problems = collect(values(lb.problems))
   partitions, status = LPT(lb, nb_partitions)
