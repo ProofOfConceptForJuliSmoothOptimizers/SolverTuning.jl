@@ -1,6 +1,6 @@
 export init_workers
 
-const MAX_NUMBER_SGE_NODES = 24
+const MAX_NUMBER_SGE_NODES = 23
 const QSUB_FLAGS = `-q hs22 -V`
 const EXE_FLAGS = "--project=$(joinpath(@__DIR__, ".."))"
 const WORKING_DIRECTORY = joinpath(ENV["HOME"], "julia_worker_logs")

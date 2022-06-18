@@ -7,8 +7,8 @@ function solve_bb_model!(
   return solve(problem.nomad, [Float64(xᵢ) for xᵢ in problem.x])
 end
 
-function solve_bb_model(bbmodel::AbstractBBModel; kwargs...)
-  param_optimization_problem = ParameterOptimizationProblem(bbmodel)
+function solve_bb_model(bbmodel::AbstractBBModel;lb_choice=:C, kwargs...)
+  param_optimization_problem = ParameterOptimizationProblem(bbmodel;lb_choice=lb_choice)
   let result = nothing, best_params = nothing
     try
       # named arguments are options to pass to Nomad
@@ -19,6 +19,9 @@ function solve_bb_model(bbmodel::AbstractBBModel; kwargs...)
       @info "Best feasible parameters: $best_params"
     catch e
       @error "Error occured while running NOMAD: $e"
+      if isa(e, CompositeException)
+        showerror(stdout, exception.exceptions[1])
+      end
       best_params =
         (; zip(param_optimization_problem.nlp.meta.x_n, param_optimization_problem.x)...)
     finally

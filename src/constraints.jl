@@ -2,7 +2,7 @@
 function format_constraints(param_opt_problem::ParameterOptimizationProblem{T, S, B, L}) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
   nlp = param_opt_problem.nlp
   lcon = nlp.meta.lcon
-  ucon = nlp.meta. ucon
+  ucon = nlp.meta.ucon
   v = convert(Vector{Float64}, param_opt_problem.x)
   cons_values = nlp.c(v)
   
