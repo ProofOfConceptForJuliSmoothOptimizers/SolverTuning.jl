@@ -108,7 +108,7 @@ function run_optim_problem(
 ) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
   update!(param_opt_problem, v)
   c = format_constraints(param_opt_problem)
-  @info "new params: $(param_opt_problem.x)"
+  # @info "new params: $(param_opt_problem.x)"
   # @info "constraints values: $c"
   bb_output, new_worker_data = run_bb_model(param_opt_problem.nlp, param_opt_problem.x)
   update_worker_data!(param_opt_problem.worker_data, new_worker_data)
@@ -180,7 +180,7 @@ nomad_type(::T) where {T <: Bool} = "B"
 granularities(x::S) where {S} = [granularity(xᵢ) for xᵢ in x]
 granularity(::T) where {T <: Union{Bool, Int}} = one(Float64)
 granularity(::Float64) = Float64(0.0)
-granularity(::Float32) = Float64(eps(Float32))
+granularity(::Float32) = eps(Float64)
 granularity(::Float16) = Float64(1.0e-3)
 
 function lower_bounds(nlp::BBModel)

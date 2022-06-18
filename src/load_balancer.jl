@@ -70,7 +70,6 @@ function execute(lb::L; iteration_threshold = 1) where {L <: AbstractLoadBalance
 
   nb_partitions = length(workers())
   partitions, status = lb.method(nb_partitions)
-  @info "partitions: $([sum(p.weight for p  in p_i) for p_i in partitions])"
   problem_def_future = Future[]
   for (i, worker_id) in enumerate(workers())
     remotecall_fetch(clear_worker_problems, worker_id)
