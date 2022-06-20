@@ -7,8 +7,8 @@ function solve_bb_model!(
   return solve(problem.nomad, [Float64(xᵢ) for xᵢ in problem.x])
 end
 
-function solve_bb_model(bbmodel::AbstractBBModel;lb_choice=:C, kwargs...)
-  param_optimization_problem = ParameterOptimizationProblem(bbmodel;lb_choice=lb_choice)
+function solve_bb_model(bbmodel::AbstractBBModel; lb_choice = :C, kwargs...)
+  param_optimization_problem = ParameterOptimizationProblem(bbmodel; lb_choice = lb_choice)
   let result = nothing, best_params = nothing
     try
       # named arguments are options to pass to Nomad
