@@ -7,9 +7,7 @@ mutable struct GreedyLoadBalancer <: AbstractLoadBalancer
   method::Function
   iteration::Int
 
-  function GreedyLoadBalancer(
-    problems::Dict{Int, Problem},
-  )
+  function GreedyLoadBalancer(problems::Dict{Int, Problem})
     obj = new(problems, LPT, 0)
     obj.method = nb_partitions -> (LPT(obj, nb_partitions))
     return obj
@@ -21,9 +19,7 @@ mutable struct RoundRobinLoadBalancer <: AbstractLoadBalancer
   method::Function
   iteration::Int
 
-  function RoundRobinLoadBalancer(
-    problems::Dict{Int, Problem},
-  )
+  function RoundRobinLoadBalancer(problems::Dict{Int, Problem})
     obj = new(problems, round_robin_partition, 0)
     obj.method = nb_partitions -> (round_robin_partition(obj, nb_partitions))
     return obj
@@ -35,9 +31,7 @@ mutable struct CombineLoadBalancer <: AbstractLoadBalancer
   method::Function
   iteration::Int
 
-  function CombineLoadBalancer(
-    problems::Dict{Int, Problem},
-  )
+  function CombineLoadBalancer(problems::Dict{Int, Problem})
     obj = new(problems, COMBINE, 0)
     obj.method = nb_partitions -> (COMBINE(obj, nb_partitions))
     return obj
@@ -63,7 +57,7 @@ function execute(lb::L; iteration_threshold = 1) where {L <: AbstractLoadBalance
   lb.iteration += 1
 end
 
-function LPT(lb::L, nb_partitions::Int) where {L <: Union{GreedyLoadBalancer,CombineLoadBalancer}}
+function LPT(lb::L, nb_partitions::Int) where {L <: Union{GreedyLoadBalancer, CombineLoadBalancer}}
   partitions = [Vector{Problem}() for _ ∈ 1:nb_partitions]
   problems = sort(collect(values(lb.problems)); by = p -> p.weight, rev = true)
   σ = sum(problem.weight for problem ∈ problems) / nb_partitions
@@ -83,10 +77,10 @@ function round_robin_partition(lb::RoundRobinLoadBalancer, nb_partitions::Int)
   return partitions, true
 end
 
-function first_fit(v::Vector{Problem}, max_capacity::S, nb_bin::Int) where S <: Real
+function first_fit(v::Vector{Problem}, max_capacity::S, nb_bin::Int) where {S <: Real}
   nb_bin > 0 || error("cannot have a negative number of partitions")
-  partitions = [Vector{Problem}() for _ in 1:nb_bin]
-  capacities = [zero(S) for _ in 1:nb_bin]
+  partitions = [Vector{Problem}() for _ = 1:nb_bin]
+  capacities = [zero(S) for _ = 1:nb_bin]
   for p in v
     for (c_idx, c) in enumerate(capacities)
       if c + p.weight ≤ max_capacity
@@ -101,16 +95,23 @@ function first_fit(v::Vector{Problem}, max_capacity::S, nb_bin::Int) where S <: 
 end
 
 function FFD(v::Vector{Problem}, max_capacity::S, nb_bin::Int) where {S <: Real}
-sorted_v = sort(v; by = p -> p.weight, rev = true)
-return first_fit(sorted_v, max_capacity, nb_bin)
+  sorted_v = sort(v; by = p -> p.weight, rev = true)
+  return first_fit(sorted_v, max_capacity, nb_bin)
 end
 
-function multifit(problems::Vector{Problem}, nb_bin::Int; L::S= max(sum(p.weight for p in problems)/nb_bin, max([p.weight for p in problems]...)), U::V= max(2*sum(problems)/nb_bin, max([p.weight for p in problems]...)), nm_itmax::Int=6, atol::Float64=0.005) where {S <: Real, V <: Real}
+function multifit(
+  problems::Vector{Problem},
+  nb_bin::Int;
+  L::S = max(sum(p.weight for p in problems) / nb_bin, max([p.weight for p in problems]...)),
+  U::V = max(2 * sum(problems) / nb_bin, max([p.weight for p in problems]...)),
+  nm_itmax::Int = 6,
+  atol::Float64 = 0.005,
+) where {S <: Real, V <: Real}
   nb_bin > 0 || error("nb of partitions must be greater than 0.")
   partitions = nothing
   σ = sum(problem.weight for problem ∈ problems) / nb_bin
-  while (atol*σ < U-L) && nm_itmax > 0
-    C = (L+U)/2
+  while (atol * σ < U - L) && nm_itmax > 0
+    C = (L + U) / 2
     partitions, status = FFD(problems, C, nb_bin)
     U = status ? C : U
     L = !status ? C : L
@@ -120,12 +121,18 @@ function multifit(problems::Vector{Problem}, nb_bin::Int; L::S= max(sum(p.weight
   return partitions, status
 end
 
-function COMBINE(lb::CombineLoadBalancer, nb_partitions::Int; atol::Float64=0.0005)
+function COMBINE(lb::CombineLoadBalancer, nb_partitions::Int; atol::Float64 = 0.0005)
   nb_partitions > 0 || error("nb of partitions must be greater than 0.")
   problems = collect(values(lb.problems))
   partitions, status = LPT(lb, nb_partitions)
   σ = sum(problem.weight for problem ∈ problems) / nb_partitions
   M = max([sum(p.weight for p in p_i) for p_i in partitions]...)
   M ≥ 1.5σ && (return partitions, status)
-  return multifit(problems, nb_partitions; L=max(M/(4/3 - 1/(3M)), max([p.weight for p in problems]...), σ), U=M, atol=atol)
+  return multifit(
+    problems,
+    nb_partitions;
+    L = max(M / (4 / 3 - 1 / (3M)), max([p.weight for p in problems]...), σ),
+    U = M,
+    atol = atol,
+  )
 end

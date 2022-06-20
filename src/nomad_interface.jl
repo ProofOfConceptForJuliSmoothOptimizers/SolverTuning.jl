@@ -15,7 +15,7 @@ mutable struct ParameterOptimizationProblem{
   x::S
   c::Vector{Float64}
   load_balancer::L
-  worker_data::Dict{Int,Vector{Vector{ProblemMetrics}}}
+  worker_data::Dict{Int, Vector{Vector{ProblemMetrics}}}
 end
 
 function ParameterOptimizationProblem(
@@ -28,7 +28,8 @@ function ParameterOptimizationProblem(
   elseif lb_choice == :R
     load_balancer = RoundRobinLoadBalancer(nlp.problems)
   end
-  lb_choice ∈ (:G, :R, :C) || @warn "this load balancer option does not exist. Choosing the Combine algorithm."
+  lb_choice ∈ (:G, :R, :C) ||
+    @warn "this load balancer option does not exist. Choosing the Combine algorithm."
   obj = ParameterOptimizationProblem(nlp, deepcopy(nlp.meta.x0), Vector{Float64}(), load_balancer)
   obj.c = format_constraints(obj)
   return obj
@@ -84,7 +85,7 @@ function eval_fct(
   success = false
   count_eval = false
   black_box_output = [Inf64]
-  push!(black_box_output, [0.0 for _ in 1:n_con]...)
+  push!(black_box_output, [0.0 for _ = 1:n_con]...)
   execute(lb)
   try
     black_box_output = run_optim_problem(param_opt_problem, v)
@@ -132,8 +133,9 @@ function update!(
   end
 end
 
-function update_lb!(param_opt_problem::ParameterOptimizationProblem{T, S, B, L}
-  ) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
+function update_lb!(
+  param_opt_problem::ParameterOptimizationProblem{T, S, B, L},
+) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
   worker_data = param_opt_problem.worker_data
   lb = param_opt_problem.load_balancer
   for (_, bb_iterations) in worker_data
@@ -145,7 +147,10 @@ function update_lb!(param_opt_problem::ParameterOptimizationProblem{T, S, B, L}
   end
 end
 
-function update_worker_data!(data::Dict{Int,Vector{Vector{ProblemMetrics}}}, new_data::Dict{Int, Vector{ProblemMetrics}})
+function update_worker_data!(
+  data::Dict{Int, Vector{Vector{ProblemMetrics}}},
+  new_data::Dict{Int, Vector{ProblemMetrics}},
+)
   for w_id in workers()
     push!(data[w_id], new_data[w_id])
   end
