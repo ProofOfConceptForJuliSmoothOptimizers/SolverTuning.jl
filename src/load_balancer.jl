@@ -9,17 +9,11 @@ mutable struct GreedyLoadBalancer <: AbstractLoadBalancer
 
   function GreedyLoadBalancer(
     problems::Dict{Int, Problem},
-    method::Function,
-    iteration::Int,
   )
-    obj = new(problems, method, iteration)
-    obj.method = nb_partitions -> (method(obj, nb_partitions))
+    obj = new(problems, LPT, 0)
+    obj.method = nb_partitions -> (LPT(obj, nb_partitions))
     return obj
   end
-end
-
-function GreedyLoadBalancer(problems::Dict{Int, Problem})
-  return GreedyLoadBalancer(problems, LPT, 0)
 end
 
 mutable struct RoundRobinLoadBalancer <: AbstractLoadBalancer
@@ -29,17 +23,11 @@ mutable struct RoundRobinLoadBalancer <: AbstractLoadBalancer
 
   function RoundRobinLoadBalancer(
     problems::Dict{Int, Problem},
-    method::Function,
-    iteration::Int,
   )
-    obj = new(problems, method, iteration)
-    obj.method = nb_partitions -> (method(obj, nb_partitions))
+    obj = new(problems, round_robin_partition, 0)
+    obj.method = nb_partitions -> (round_robin_partition(obj, nb_partitions))
     return obj
   end
-end
-
-function RoundRobinLoadBalancer(problems::Dict{Int, Problem})
-  return RoundRobinLoadBalancer(problems, round_robin_partition, 0)
 end
 
 mutable struct CombineLoadBalancer <: AbstractLoadBalancer
@@ -49,17 +37,11 @@ mutable struct CombineLoadBalancer <: AbstractLoadBalancer
 
   function CombineLoadBalancer(
     problems::Dict{Int, Problem},
-    method::Function,
-    iteration::Int,
   )
-    obj = new(problems, method, iteration)
-    obj.method = nb_partitions -> (method(obj, nb_partitions))
+    obj = new(problems, COMBINE, 0)
+    obj.method = nb_partitions -> (COMBINE(obj, nb_partitions))
     return obj
   end
-end
-
-function CombineLoadBalancer(problems::Dict{Int, Problem})
-  return CombineLoadBalancer(problems, COMBINE, 0)
 end
 
 function execute(lb::L; iteration_threshold = 1) where {L <: AbstractLoadBalancer}
@@ -103,7 +85,7 @@ end
 
 function first_fit(v::Vector{Problem}, max_capacity::S, nb_bin::Int) where S <: Real
   nb_bin > 0 || error("cannot have a negative number of partitions")
-  partitions = [Vector{Problem{T}}() for _ in 1:nb_bin]
+  partitions = [Vector{Problem}() for _ in 1:nb_bin]
   capacities = [zero(S) for _ in 1:nb_bin]
   for p in v
     for (c_idx, c) in enumerate(capacities)
