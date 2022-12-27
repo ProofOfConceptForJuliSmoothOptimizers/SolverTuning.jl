@@ -5,14 +5,11 @@ export ParameterOptimizationProblem, create_nomad_problem!, solve_with_nomad!
 Struct that defines a problem that will be sent to NOMAD.jl.
 """
 mutable struct ParameterOptimizationProblem{
-  T,
-  S,
-  B <: AbstractBBModel{T, S},
+  B <: AbstractBBModel,
   L <: AbstractLoadBalancer,
 }
   nomad::Union{Nothing, NomadProblem}
   nlp::B
-  x::S
   c::Vector{Float64}
   load_balancer::L
   worker_data::Dict{Int, Vector{Vector{ProblemMetrics}}}
@@ -21,55 +18,49 @@ end
 function ParameterOptimizationProblem(
   nlp::B;
   lb_choice::Symbol = :C,
-) where {T, S, B <: AbstractBBModel{T, S}}
-  load_balancer = CombineLoadBalancer(nlp.problems)
-  if lb_choice == :G
-    load_balancer = GreedyLoadBalancer(nlp.problems)
-  elseif lb_choice == :R
-    load_balancer = RoundRobinLoadBalancer(nlp.problems)
-  end
-  lb_choice ∈ (:G, :R, :C) ||
-    @warn "this load balancer option does not exist. Choosing the Combine algorithm."
-  obj = ParameterOptimizationProblem(nlp, deepcopy(nlp.meta.x0), Vector{Float64}(), load_balancer)
+) where {B <: AbstractBBModel}
+  lb_choice ∈ (:G, :R, :C) || error("The load balancer option '$(lb_choice)' does not exist.")
+
+  (lb_choice == :G) && (load_balancer = GreedyLoadBalancer(nlp.problems))
+  (lb_choice == :R) && (load_balancer = RoundRobinLoadBalancer(nlp.problems))
+  (lb_choice == :C) && (load_balancer = CombineLoadBalancer(nlp.problems))
+
+  obj = ParameterOptimizationProblem(nlp, Vector{Float64}(), load_balancer)
   obj.c = format_constraints(obj)
   return obj
 end
 
 function ParameterOptimizationProblem(
   nlp::B,
-  x::S,
   c::Vector{Float64},
   load_balancer::L,
-) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
+) where {B <: AbstractBBModel, L <: AbstractLoadBalancer}
   worker_data = Dict{Int, Vector{Vector{ProblemMetrics}}}(
     i => Vector{Vector{ProblemMetrics}}() for i in workers()
   )
-  ParameterOptimizationProblem(nothing, nlp, x, c, load_balancer, worker_data)
+  ParameterOptimizationProblem(nothing, nlp, c, load_balancer, worker_data)
 end
 
 function create_nomad_problem!(
-  param_opt_problem::ParameterOptimizationProblem{T, S, B, L};
+  param_opt_problem::ParameterOptimizationProblem{B, L};
   kwargs...,
-) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
+) where {B <: AbstractBBModel, L <: AbstractLoadBalancer}
   # eval function:
   function eval_function(v::AbstractVector{Float64}; problem = param_opt_problem)
     eval_fct(v, problem)
   end
-
-  solver_params = param_opt_problem.x
   bbmodel = param_opt_problem.nlp
   ncon = length(param_opt_problem.c)
-  output_types = ["EB" for _ = 1:ncon]
-  pushfirst!(output_types, "OBJ")
+  output_types = vcat(String["OBJ"], String["EB" for _ ∈ 1:ncon])
   nomad = NomadProblem(
-    length(solver_params),
+    length(bbmodel.parameter_set),
     length(output_types),
     output_types,
     eval_function;
-    input_types = input_types(solver_params),
-    granularity = granularities(solver_params),
-    lower_bound = lower_bounds(bbmodel),
-    upper_bound = upper_bounds(bbmodel),
+    input_types = input_types(bbmodel),
+    granularity = granularities(values(bbmodel.parameter_set)),
+    lower_bound = bbmodel.meta.lvar,
+    upper_bound = bbmodel.meta.uvar,
   )
   set_nomad_options!(nomad.options; kwargs...)
   param_opt_problem.nomad = nomad
@@ -78,8 +69,8 @@ end
 # define eval function here:
 function eval_fct(
   v::Vector{Float64},
-  param_opt_problem::ParameterOptimizationProblem{T, S, B, L},
-) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
+  param_opt_problem::ParameterOptimizationProblem{B, L},
+) where {B <: AbstractBBModel, L <: AbstractLoadBalancer}
   lb = param_opt_problem.load_balancer
   n_con = length(param_opt_problem.c)
   success = false
@@ -104,38 +95,20 @@ end
 
 # Evaluate constraints here:
 function run_optim_problem(
-  param_opt_problem::ParameterOptimizationProblem{T, S, B, L},
+  param_opt_problem::ParameterOptimizationProblem{B, L},
   v::Vector{Float64},
-) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
-  update!(param_opt_problem, v)
+) where {B <: AbstractBBModel, L <: AbstractLoadBalancer}
+  set_values!(param_opt_problem.nlp.parameter_set, v)
   c = format_constraints(param_opt_problem)
-  # @info "new params: $(param_opt_problem.x)"
-  # @info "constraints values: $c"
-  bb_output, new_worker_data = run_bb_model(param_opt_problem.nlp, param_opt_problem.x)
+  bb_output, new_worker_data = get_bb_output(param_opt_problem.nlp)
   update_worker_data!(param_opt_problem.worker_data, new_worker_data)
   update_lb!(param_opt_problem)
   return [bb_output, c...]
 end
 
-function update!(
-  param_opt_problem::ParameterOptimizationProblem{T, S, B, L},
-  v::Vector{Float64},
-) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
-  for (i, vᵢ) in zip(1:length(param_opt_problem.x), v)
-    if nomad_type(param_opt_problem.x[i]) == "B"
-      param_opt_problem.x[i] = Bool(round(Int, vᵢ))
-    elseif nomad_type(param_opt_problem.x[i]) == "I"
-      param_opt_problem.x[i] = round(Int, vᵢ)
-    else
-      param_type = typeof(param_opt_problem.x[i])
-      param_opt_problem.x[i] = param_type(vᵢ)
-    end
-  end
-end
-
 function update_lb!(
-  param_opt_problem::ParameterOptimizationProblem{T, S, B, L},
-) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
+  param_opt_problem::ParameterOptimizationProblem{B, L},
+) where {B <: AbstractBBModel, L <: AbstractLoadBalancer}
   worker_data = param_opt_problem.worker_data
   lb = param_opt_problem.load_balancer
   for (_, bb_iterations) in worker_data
@@ -164,36 +137,36 @@ end
 
 # Function that validates a parameter optimization problem
 function check_problem(
-  p::ParameterOptimizationProblem{T, S, B, L},
-) where {T, S, B <: AbstractBBModel, L <: AbstractLoadBalancer}
+  p::ParameterOptimizationProblem{B, L},
+) where {B <: AbstractBBModel, L <: AbstractLoadBalancer}
   @assert !isnothing(p.nlp) "error: Black Box not defined"
 end
 
 function solve_with_nomad!(
-  problem::ParameterOptimizationProblem{T, S, B, L},
-) where {T, S, B <: AbstractBBModel, L <: AbstractLoadBalancer}
+  problem::ParameterOptimizationProblem{B, L},
+) where {B <: AbstractBBModel, L <: AbstractLoadBalancer}
   check_problem(problem)
-  solve(problem.nomad, [Float64(xᵢ) for xᵢ in problem.x])
+  solve(problem.nomad, problem.nlp.meta.x0)
 end
 
-input_types(x::S) where {S} = [nomad_type(xᵢ) for xᵢ in x]
-
-nomad_type(::T) where {T <: Real} = "R"
-nomad_type(::T) where {T <: Integer} = "I"
-nomad_type(::T) where {T <: Bool} = "B"
+function input_types(nlp::AbstractBBModel)
+  nomad_types = Vector{String}(undef, length(nlp.meta.x0))
+  ifloat = nlp.bb_meta.ifloat
+  iint = nlp.bb_meta.iint
+  ibool = nlp.bb_meta.ibool
+  for f_idx in ifloat
+    nomad_types[f_idx] = "R"
+  end
+  for i_idx in iint
+    nomad_types[i_idx] = "I"
+  end
+  for b_idx in ibool
+    nomad_types[b_idx] = "B"
+  end
+  return nomad_types
+end
 
 granularities(x::S) where {S} = [granularity(xᵢ) for xᵢ in x]
-granularity(::T) where {T <: Union{Bool, Int}} = one(Float64)
-granularity(::Float64) = Float64(0.0)
-granularity(::Float32) = eps(Float64)
-granularity(::Float16) = Float64(1.0e-3)
+granularity(::T) where {T <: Integer} = one(Float64)
+granularity(::AbstractFloat) = Float64(0.0)
 
-function lower_bounds(nlp::BBModel)
-  lvar = nlp.meta.lvar
-  return [Float64(l) for l in lvar]
-end
-
-function upper_bounds(nlp::BBModel)
-  uvar = nlp.meta.uvar
-  return [Float64(u) for u in uvar]
-end

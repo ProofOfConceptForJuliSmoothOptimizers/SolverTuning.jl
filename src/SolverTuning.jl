@@ -6,6 +6,8 @@ using Pkg, LinearAlgebra, Distributed, Random, Statistics
 # JSO packages.
 using BBModels, NLPModels
 
+using SolverParameters
+
 # Nomad.
 using NOMAD
 using NOMAD: NomadOptions
