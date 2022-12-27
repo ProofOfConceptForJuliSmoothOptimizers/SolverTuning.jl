@@ -1,11 +1,11 @@
 # Format l ≤ c(x) ≤ u to c(x) ≤ 0:
 function format_constraints(
-  param_opt_problem::ParameterOptimizationProblem{T, S, B, L},
-) where {T, S, B <: AbstractBBModel{T, S}, L <: AbstractLoadBalancer}
+  param_opt_problem::ParameterOptimizationProblem{B, L},
+) where {B <: AbstractBBModel, L <: AbstractLoadBalancer}
   nlp = param_opt_problem.nlp
   lcon = nlp.meta.lcon
   ucon = nlp.meta.ucon
-  v = convert(Vector{Float64}, param_opt_problem.x)
+  v = values(nlp.parameter_set)
   cons_values = nlp.c(v)
 
   # constraints that are from lower_bound:
