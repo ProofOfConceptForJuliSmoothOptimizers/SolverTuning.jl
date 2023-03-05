@@ -98,9 +98,8 @@ function run_optim_problem(
   param_opt_problem::ParameterOptimizationProblem{B, L},
   v::Vector{Float64},
 ) where {B <: AbstractBBModel, L <: AbstractLoadBalancer}
-  set_values!(param_opt_problem.nlp.parameter_set, v)
   c = format_constraints(param_opt_problem)
-  bb_output, new_worker_data = get_bb_output(param_opt_problem.nlp)
+  bb_output, new_worker_data = get_bb_output(param_opt_problem.nlp, v)
   update_worker_data!(param_opt_problem.worker_data, new_worker_data)
   update_lb!(param_opt_problem)
   return [bb_output, c...]
