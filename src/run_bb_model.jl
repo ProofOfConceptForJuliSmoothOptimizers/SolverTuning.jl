@@ -1,13 +1,9 @@
-function get_bb_output(nlp:: AbstractBBModel)
+function get_bb_output(nlp:: AbstractBBModel, v::Vector{Float64})
   futures = Dict{Int, Future}()
   @sync for worker_id in workers()
     @async futures[worker_id] = @spawnat worker_id let bb_output = 0.0, metrics = ProblemMetrics[]
       global worker_problems
-      for pb in worker_problems
-        f, p_metric = obj!(nlp, pb)
-        bb_output += f
-        push!(metrics, p_metric)
-      end
+      bb_output, metrics = obj_nomad(nlp, v, problems)
       return bb_output, metrics
     end
   end
