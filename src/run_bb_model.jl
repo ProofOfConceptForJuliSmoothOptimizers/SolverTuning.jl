@@ -3,7 +3,7 @@ function get_bb_output(nlp:: BBModel, v::Vector{Float64})
   @sync for worker_id in workers()
     @async futures[worker_id] = @spawnat worker_id let bb_output = 0.0, metrics = ProblemMetrics[]
       global worker_problems
-      bb_output, metrics = obj_nomad(nlp, v, problems)
+      bb_output, metrics = obj_nomad(nlp, v, worker_problems)
       return bb_output, metrics
     end
   end
