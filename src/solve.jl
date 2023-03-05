@@ -2,12 +2,12 @@ export solve_bb_model
 
 function solve_bb_model!(
   problem::ParameterOptimizationProblem{B, L},
-) where {B <: AbstractBBModel, L <: AbstractLoadBalancer}
+) where {B <: BBModel, L <: AbstractLoadBalancer}
   check_problem(problem)
   return solve(problem.nomad, problem.nlp)
 end
 
-function solve_bb_model(bbmodel::AbstractBBModel; lb_choice = :C, kwargs...)
+function solve_bb_model(bbmodel::BBModel; lb_choice = :C, kwargs...)
   param_optimization_problem = ParameterOptimizationProblem(bbmodel; lb_choice = lb_choice)
   let result = nothing, best_params = nothing
     try

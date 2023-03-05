@@ -1,4 +1,4 @@
-function get_bb_output(nlp:: AbstractBBModel, v::Vector{Float64})
+function get_bb_output(nlp:: BBModel, v::Vector{Float64})
   futures = Dict{Int, Future}()
   @sync for worker_id in workers()
     @async futures[worker_id] = @spawnat worker_id let bb_output = 0.0, metrics = ProblemMetrics[]
