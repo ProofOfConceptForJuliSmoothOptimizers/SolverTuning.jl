@@ -1,7 +1,7 @@
 # Format l ≤ c(x) ≤ u to c(x) ≤ 0:
 function format_constraints(
   param_opt_problem::ParameterOptimizationProblem{B, L},
-) where {B <: AbstractBBModel, L <: AbstractLoadBalancer}
+) where {B <: BBModel, L <: AbstractLoadBalancer}
   nlp = param_opt_problem.nlp
   lcon = nlp.meta.lcon
   ucon = nlp.meta.ucon
