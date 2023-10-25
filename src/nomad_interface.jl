@@ -4,10 +4,7 @@ export ParameterOptimizationProblem, create_nomad_problem!, solve_with_nomad!
 """
 Struct that defines a problem that will be sent to NOMAD.jl.
 """
-mutable struct ParameterOptimizationProblem{
-  B <: BBModel,
-  L <: AbstractLoadBalancer,
-}
+mutable struct ParameterOptimizationProblem{B <: BBModel, L <: AbstractLoadBalancer}
   nomad::Union{Nothing, NomadProblem}
   nlp::B
   c::Vector{Float64}
@@ -15,10 +12,7 @@ mutable struct ParameterOptimizationProblem{
   worker_data::Dict{Int, Vector{Vector{ProblemMetrics}}}
 end
 
-function ParameterOptimizationProblem(
-  nlp::B;
-  lb_choice::Symbol = :C,
-) where {B <: BBModel}
+function ParameterOptimizationProblem(nlp::B; lb_choice::Symbol = :C) where {B <: BBModel}
   lb_choice ∈ (:G, :R, :C) || error("The load balancer option '$(lb_choice)' does not exist.")
 
   (lb_choice == :G) && (load_balancer = GreedyLoadBalancer(nlp.problems))
@@ -168,4 +162,3 @@ end
 granularities(x::S) where {S} = [granularity(xᵢ) for xᵢ in x]
 granularity(::T) where {T <: Integer} = one(Float64)
 granularity(::AbstractFloat) = Float64(0.0)
-

@@ -16,15 +16,19 @@ function solve_bb_model(bbmodel::BBModel; lb_choice = :C, kwargs...)
       result = solve_with_nomad!(param_optimization_problem)
       result = result.x_best_feas
       param_names = Symbol[Symbol(i) for i in param_optimization_problem.nlp.bb_meta.x_n]
-      best_params = (;zip(param_names, result)...)
+      best_params = (; zip(param_names, result)...)
       @info "Best feasible parameters: $best_params"
     catch e
       @error "Error occured while running NOMAD: $e"
       if isa(e, CompositeException)
         showerror(stdout, exception.exceptions[1])
       end
-      best_params =
-        (; zip(param_optimization_problem.nlp.bb_meta.x_n, values(param_optimization_problem.nlp.parameter_set))...)
+      best_params = (;
+        zip(
+          param_optimization_problem.nlp.bb_meta.x_n,
+          values(param_optimization_problem.nlp.parameter_set),
+        )...
+      )
     finally
       rmprocs(workers())
       return best_params, param_optimization_problem
